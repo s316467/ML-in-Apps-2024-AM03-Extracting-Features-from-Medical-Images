@@ -16,8 +16,6 @@ import numpy as np
 import torch
 from . import metric_utils
 
-#----------------------------------------------------------------------------
-
 # Spherical interpolation of a batch of vectors.
 def slerp(a, b, t):
     a = a / a.norm(dim=-1, keepdim=True)
@@ -44,6 +42,7 @@ class PPLSampler(torch.nn.Module):
         self.sampling = sampling
         self.crop = crop
         self.vgg16 = copy.deepcopy(vgg16)
+        self.latent_vectors = None  # Initialize latent vectors
 
     def forward(self, c):
         # Generate random latents and interpolation t-values.
@@ -55,10 +54,12 @@ class PPLSampler(torch.nn.Module):
             w0, w1 = self.G.mapping(z=torch.cat([z0,z1]), c=torch.cat([c,c])).chunk(2)
             wt0 = w0.lerp(w1, t.unsqueeze(1).unsqueeze(2))
             wt1 = w0.lerp(w1, t.unsqueeze(1).unsqueeze(2) + self.epsilon)
+            self.latent_vectors = {'w0': w0, 'w1': w1, 'wt0': wt0, 'wt1': wt1}
         else: # space == 'z'
             zt0 = slerp(z0, z1, t.unsqueeze(1))
             zt1 = slerp(z0, z1, t.unsqueeze(1) + self.epsilon)
             wt0, wt1 = self.G.mapping(z=torch.cat([zt0,zt1]), c=torch.cat([c,c])).chunk(2)
+            self.latent_vectors = {'z0': z0, 'z1': z1, 'zt0': zt0, 'zt1': zt1}
 
         # Randomize noise buffers.
         for name, buf in self.G.named_buffers():
@@ -89,6 +90,9 @@ class PPLSampler(torch.nn.Module):
         dist = (lpips_t0 - lpips_t1).square().sum(1) / self.epsilon ** 2
         return dist
 
+    def get_latent_vectors(self):
+        return self.latent_vectors
+
 #----------------------------------------------------------------------------
 
 def compute_ppl(opts, num_samples, epsilon, space, sampling, crop, batch_size):
@@ -115,11 +119,13 @@ def compute_ppl(opts, num_samples, epsilon, space, sampling, crop, batch_size):
 
     # Compute PPL.
     if opts.rank != 0:
-        return float('nan')
+        return float('nan'), None
     dist = torch.cat(dist)[:num_samples].cpu().numpy()
     lo = np.percentile(dist, 1, interpolation='lower')
     hi = np.percentile(dist, 99, interpolation='higher')
     ppl = np.extract(np.logical_and(dist >= lo, dist <= hi), dist).mean()
-    return float(ppl)
-
-#----------------------------------------------------------------------------
+    
+    # Retrieve latent vectors
+    latent_vectors = sampler.get_latent_vectors()
+    
+    return float(ppl), latent_vectors

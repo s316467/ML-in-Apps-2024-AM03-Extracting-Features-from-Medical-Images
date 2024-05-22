@@ -13,6 +13,7 @@ import time
 import json
 import torch
 import dnnlib
+import pickle
 
 from . import metric_utils
 from . import frechet_inception_distance
@@ -85,25 +86,33 @@ def report_metric(result_dict, run_dir=None, snapshot_pkl=None):
 @register_metric
 def fid50k_full(opts):
     opts.dataset_kwargs.update(max_size=None, xflip=False)
-    fid = frechet_inception_distance.compute_fid(opts, max_real=None, num_gen=1)
+    fid = frechet_inception_distance.compute_fid(opts, max_real=None, num_gen=50000)
     return dict(fid50k_full=fid)
 
 @register_metric
 def kid50k_full(opts):
     opts.dataset_kwargs.update(max_size=None, xflip=False)
-    kid = kernel_inception_distance.compute_kid(opts, max_real=1000000, num_gen=10, num_subsets=100, max_subset_size=1000)
+    kid = kernel_inception_distance.compute_kid(opts, max_real=1000000, num_gen=50000, num_subsets=100, max_subset_size=1000)
     return dict(kid50k_full=kid)
 
 @register_metric
 def pr50k3_full(opts):
     opts.dataset_kwargs.update(max_size=None, xflip=False)
-    precision, recall = precision_recall.compute_pr(opts, max_real=200000, num_gen=1, nhood_size=3, row_batch_size=10000, col_batch_size=10000)
+    precision, recall = precision_recall.compute_pr(opts, max_real=200000, num_gen=50000, nhood_size=3, row_batch_size=10000, col_batch_size=10000)
     return dict(pr50k3_full_precision=precision, pr50k3_full_recall=recall)
 
 @register_metric
 def ppl2_wend(opts):
-    ppl = perceptual_path_length.compute_ppl(opts, num_samples=50000, epsilon=1e-4, space='w', sampling='end', crop=False, batch_size=2)
+    ppl, latent_vectors = perceptual_path_length.compute_ppl(opts, num_samples=500, epsilon=1e-4, space='w', sampling='end', crop=False, batch_size=4)
+    
+    # Salva i latent vectors in un file
+    with open('latent_vectors.pkl', 'wb') as f:
+        pickle.dump(latent_vectors, f)
+    
+    print("Latent vectors saved in file 'latent_vectors.pkl'")
+    
     return dict(ppl2_wend=ppl)
+
 
 @register_metric
 def eqt50k_int(opts):
