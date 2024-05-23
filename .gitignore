@@ -1,7 +1,16 @@
 *.zip
 */training_runs
-**/__pycache__/
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints
+env
+.venv
+env/
 venv/
+ENV/
+env.bak/
+venv.bak/
 .vscode/
 .idea/
 .DS_Store
