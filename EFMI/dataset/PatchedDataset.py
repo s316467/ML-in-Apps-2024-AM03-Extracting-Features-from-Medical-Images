@@ -41,7 +41,6 @@ class PatchedDataset(Dataset):
 
         # Process in_roi_patches (label 1)
         in_roi_dir = os.path.join(root_dir, self.in_roi_path)
-        print(in_roi_dir)
         for patient_id in range(1, self.num_images + 1):
             if patient_id != 21:
                 patient_dir = str(patient_id) + ".svs"
