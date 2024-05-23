@@ -120,7 +120,7 @@ def extract_patches(
     roi_coords = scale_coords(roi_coords, downsampling_factor)
 
     width, height = slide.level_dimensions[mag_level]
-
+    
     for y in range(0, height - patch_size, patch_size):
         for x in range(0, width - patch_size, patch_size):
 
@@ -129,7 +129,7 @@ def extract_patches(
                 mag_level,
                 (patch_size, patch_size),
             )
-
+          
             if is_not_white_or_gray(np.array(patch)):
                 patch_vertices = get_patch_vertices(x, y, patch_size)
 
@@ -160,11 +160,13 @@ def get_images_and_roi_file_names(ds_path):
     svs_names = sorted(svs_names, key=lambda x: int(re.search(r"\d+", x).group()))
     xml_names = sorted(xml_names, key=lambda x: int(re.search(r"\d+", x).group()))
 
-    return svs_names, xml_names
+    return (svs_names, xml_names)
 
 
 def extract_all(ds_path, not_roi_path, in_roi_path, patch_size=512, mag_level=1):
-    for svs_name, xml_name in zip(get_images_and_roi_file_names(ds_path)):
+    svs_names, xml_names = get_images_and_roi_file_names(ds_path)
+
+    for svs_name, xml_name in zip(svs_names, xml_names):
         image_path = os.path.join(ds_path, svs_name)
         coords_path = os.path.join(ds_path, xml_name)
         roi_coords = parse_xml(coords_path)
@@ -194,10 +196,16 @@ if __name__ == "__main__":
         "--roi_path", type=str, required=True, help="Path to save patches inside ROI"
     )
     parser.add_argument(
-        "--patch_size", type=int, default=512, help="Size of the patches to extract, defaults to 512"
+        "--patch_size",
+        type=int,
+        default=512,
+        help="Size of the patches to extract, defaults to 512",
     )
     parser.add_argument(
-        "--mag_level", type=int, default=1, help="Magnification level to use, defaults to 1"
+        "--mag_level",
+        type=int,
+        default=1,
+        help="Magnification level to use, defaults to 1",
     )
 
     args = parser.parse_args()
