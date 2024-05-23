@@ -1,5 +1,5 @@
 root_dir=${1}
-num_images=${2:-1}
+num_images=${2:-24}
 batch_size=${3:-8}
 latent_dim=${4:-100}
 

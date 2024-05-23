@@ -55,9 +55,10 @@ def main(args):
     svm.classify(latents, labels)
 
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train a VAE with WSI patches, extrct latents and test with SVM")
+    parser = argparse.ArgumentParser(
+        description="Train a VAE with WSI patches, extrct latents and test with SVM"
+    )
     parser.add_argument(
         "--root_dir",
         type=str,
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_images",
         type=int,
-        default=1,
+        default=24,
     )
     parser.add_argument(
         "--batch_size",

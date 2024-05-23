@@ -7,9 +7,15 @@ import re
 
 
 # TODO: write a "load" function instead of doing stuff in init
-# TODO: pass paths and numbers via params instead of hard coding them
 class PatchedDataset(Dataset):
-    def __init__(self, root_dir, not_roi_path="not_roi_patches", in_roi_path="in_roi_patches", num_images=24, transform=None):
+    def __init__(
+        self,
+        root_dir,
+        not_roi_path="not_roi_patches",
+        in_roi_path="in_roi_patches",
+        num_images=24,
+        transform=None,
+    ):
         self.root_dir = root_dir
         self.not_roi_path = not_roi_path
         self.in_roi_path = in_roi_path
@@ -22,12 +28,11 @@ class PatchedDataset(Dataset):
 
         # Process not_roi_patches (label 0)
         not_roi_dir = os.path.join(root_dir, self.not_roi_path)
-          
 
         for patient_id in range(1, self.num_images + 1):
             patient_dir = str(patient_id) + ".svs"
             patient_dir = os.path.join(not_roi_dir, str(patient_dir))
-            
+
             for img_name in [f for f in os.listdir(patient_dir) if f.endswith(".png")]:
                 self.image_paths.append(os.path.join(patient_dir, img_name))
                 self.labels.append(0)
@@ -41,8 +46,10 @@ class PatchedDataset(Dataset):
             if patient_id != 21:
                 patient_dir = str(patient_id) + ".svs"
                 patient_dir = os.path.join(in_roi_dir, str(patient_dir))
-                
-                for img_name in [f for f in os.listdir(patient_dir) if f.endswith(".png")]:
+
+                for img_name in [
+                    f for f in os.listdir(patient_dir) if f.endswith(".png")
+                ]:
                     self.image_paths.append(os.path.join(patient_dir, img_name))
                     self.labels.append(1)
                     self.patients.append(patient_id)
