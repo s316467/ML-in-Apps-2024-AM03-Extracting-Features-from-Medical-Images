@@ -1,7 +1,7 @@
 import argparse
 import torch
 import numpy as np
-from dataset import PatchedDataset
+from dataset.PatchedDataset import PatchedDataset
 from torch.utils.data import DataLoader
 from train import train
 import baseline.svm as svm
@@ -39,6 +39,7 @@ def main(args):
     - Classify latens with SVM
     """
 
+    print("Training the VAE...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
@@ -47,8 +48,10 @@ def main(args):
 
     VAE_trained = train(dataloader, device, latent_dim=args.latent_dim)
 
+    print("Extracting latents...")
     latents, labels = extract_latents(VAE_trained, dataloader, device)
 
+    print("Classifying latents with SVMs...")
     svm.classify(latents, labels)
 
 
@@ -64,19 +67,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_images",
         type=int,
-        defaults=1,
+        default=1,
     )
     parser.add_argument(
         "--batch_size",
         type=int,
-        defaults=8,
+        default=8,
     )
     parser.add_argument(
         "--latent_dim",
         type=int,
-        defaults=100,
+        default=100,
     )
 
     args = parser.parse_args()
+
+    print(args)
 
     main(args)

@@ -3,6 +3,9 @@ num_images=${2:-1}
 batch_size=${3:-8}
 latent_dim=${4:-100}
 
+# Set PYTHONPATH to include the project root
+export PYTHONPATH=$(pwd)
+
 python ./features-extractors/vae/main.py \
 --root_dir=${root_dir} \
 --num_images=${num_images} \
