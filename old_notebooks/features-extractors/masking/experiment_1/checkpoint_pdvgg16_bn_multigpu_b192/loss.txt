@@ -6,3 +6,7 @@ training/val dataset created
 world size: 1
 model created
 training/val dataset created
+================ Training Loss (Fri May 24 18:58:24 2024) ================
+world size: 1
+model created
+training/val dataset created
