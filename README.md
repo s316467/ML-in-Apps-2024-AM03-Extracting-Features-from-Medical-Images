@@ -1,21 +1,37 @@
-# ML-in-Apps-2024-AM03-Extracting-Features-from-Medical-Images
-Repository of Politecnico di Torino Master's degree course Machine Learning in Applications 
+# Extracting features from medical images
+Authors: Maria Scoleri, Antonio Ferrigno, Fabio Barbieri, Vittorio di Giorgio 
 
 
-# dataset_patches.py
-Example usage:
-
-```python
-from dataset_patches import patchesDataset
-
-rootdir = 'patches' # path to your patches folder
-dataset = patchesDataset(rootdir)
-dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+## Prerequisites
+Install OpenSlide tools:
+```sh
+sudo apt-get install openslide-tools
+pip-install -r requirements.txt #inside EFMI
 ```
 
-The patchesDataset class applies the ToTensor transform, but supports passing as input (after the rootdir) a transform.Compose. If you want to add other transformations add again the ToTensor transform. Example:
+
+
+<br></br>
+## Extract patches from WSI images
+To extract annotated patches from wsi images, run ```EFMI/launch_scripts/extract-patches.sh DATASET_PATH NOT_ROI_PATH ROI_PATH PATCH_SIZE MAG_LEVEL```. This requires that ```DATASET_PATH``` contains both svs image files and xml annotation files. The mapping svs -> xml is given by their names, i.e ```1.svs -> 1.xml```. This will extract patches and save them with this pattern: ```{x}_{y}_mag{mag_level}.png```
+
+
+
+<br></br>
+## Example usage of the PatchedDataset class
+Note that patches must have this file name: ```{x}_{y}_mag{mag_level}.png```
+
 ```python
-from dataset_patches import patchesDataset
+from dataset import PatchedDataset
+
+rootdir = 'patches' # path to your patches folder
+ds = PatchedDataset(rootdir)
+dataloader = DataLoader(ds, batch_size=8, shuffle=True)
+```
+
+The PatchedDataset class applies the ToTensor transform, but supports passing as input (after the rootdir) a transform.Compose. If you want to add other transformations add again the ToTensor transform. Example:
+```python
+from dataset import PatchedDataset
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -23,6 +39,16 @@ transform = transforms.Compose([
     ### your other transforms ###
 ])
 rootdir = 'patches' # path to your patches folder
-dataset = patchesDataset(rootdir, transform)
-dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+ds = PatchedDataset(rootdir, transform)
+dataloader = DataLoader(ds, batch_size=8, shuffle=True)
 ```
+
+<br></br>
+## Run the baseline
+To test the resnet50 baseline latents with the svm classifier, simply run ```EFMI/launch_scripts/test-baseline.sh root_dir num_images batch_size```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the baseline, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size (defaults to 8).
+
+
+
+<br></br>
+## Test the VAE latents with SVM classifier
+To test the VAE latents with the svm classifier, simply run ```EFMI/launch_scripts/test-vae.sh root_dir num_images batch_size latent_dim```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the VAE, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size with which to train the VAE (defaults to 8), ```latent_dim``` specifies the extract latents dimension (defaults to 100).
