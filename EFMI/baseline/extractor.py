@@ -4,12 +4,12 @@ import numpy as np
 
 
 class BaselineExtractor:
-    def __init__(self, model, output_dim, reduction_dim, model_name):
+    def __init__(self, model, latent_dim, reduction_dim, model_name):
 
         self.model_name = model_name
 
         self.model = nn.Sequential(*list(model.children())[:-1])
-        self.reduction_layer = nn.Linear(reduction_dim, output_dim)
+        self.reduction_layer = nn.Linear(reduction_dim, latent_dim)
 
         for param in self.model.parameters():
             param.requires_grad = False
@@ -18,7 +18,7 @@ class BaselineExtractor:
         self.model = self.model.to(self.device)
 
         self.reduction_layer = self.reduction_layer.to(self.device)
-        self.output_dim = output_dim
+        self.latent_dim = latent_dim
 
     def extract_features(self, data_loader):
         print(f"Extracting features from {self.model_name}...")
@@ -29,9 +29,12 @@ class BaselineExtractor:
         labels = []
 
         with torch.no_grad():
-            for batch_idx, image, label, patient_id, _ in enumerate(data_loader):
+            for batch_idx, batch in enumerate(data_loader):
+                image, label, patient_id, coordinates = batch
                 image = image.to(self.device)
+
                 features_batch = self.model(image).squeeze()
+                features_batch = features_batch.view(features_batch.size(0), -1)
                 features_batch = self.reduction_layer(features_batch)
 
                 print("Features extracted for batch: ", batch_idx + 1)
@@ -42,7 +45,7 @@ class BaselineExtractor:
         labels = np.concatenate(labels)
 
         print("Saving features as numpy arrays...")
-        np.save(f"{self.model_name}_features.npy", features)
-        np.save(f"{self.model_name}_labels.npy", labels)
+        np.save(f"{self.model_name}_features_{self.latent_dim}.npy", features)
+        np.save(f"{self.model_name}_labels.npy_{self.latent_dim}", labels)
 
         return features, labels

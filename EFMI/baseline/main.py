@@ -25,9 +25,11 @@ def load_extractor(model_name="resnet50", latent_dim=512):
 def main(args):
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
 
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    dataloader = DataLoader(
+        dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
+    )
 
-    extractor = load_extractor(args.baseline_model, args.output_dim)
+    extractor = load_extractor(args.model, args.latent_dim)
 
     features, labels = extractor.extract_features(dataloader)
 
@@ -61,7 +63,7 @@ if __name__ == "__main__":
         help="Which pretrained baseline model to use as baseline feature extractor, defaults to resnet50. Availables: resnet50, densenet121",
     )
     parser.add_argument(
-        "--output_dim",
+        "--latent_dim",
         type=int,
         default=512,
         help="Extracted latent vector dimension, defaults to 512",
