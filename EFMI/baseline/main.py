@@ -33,7 +33,7 @@ def main(args):
 
     features, labels = extractor.extract_features(dataloader)
 
-    svm.classify(features, labels)
+    svm.classify(features, labels, args.experiment_name)
 
 
 if __name__ == "__main__":
@@ -68,6 +68,7 @@ if __name__ == "__main__":
         default=512,
         help="Extracted latent vector dimension, defaults to 512",
     )
+    parser.add_argument("--experiment_name", type=str)
     args = parser.parse_args()
 
     main(args)

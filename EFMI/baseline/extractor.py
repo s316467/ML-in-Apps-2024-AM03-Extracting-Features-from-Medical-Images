@@ -46,6 +46,6 @@ class BaselineExtractor:
 
         print("Saving features as numpy arrays...")
         np.save(f"{self.model_name}_features_{self.latent_dim}.npy", features)
-        np.save(f"{self.model_name}_labels.npy_{self.latent_dim}", labels)
+        np.save(f"{self.model_name}_labels_{self.latent_dim}.npy", labels)
 
         return features, labels
