@@ -4,12 +4,12 @@ import numpy as np
 
 
 class BaselineExtractor:
-    def __init__(self, model, latent_dim, reduction_dim, model_name):
+    def __init__(self, model, reduction_layer, model_name, latent_dim):
 
         self.model_name = model_name
 
         self.model = nn.Sequential(*list(model.children())[:-1])
-        self.reduction_layer = nn.Linear(reduction_dim, latent_dim)
+        self.reduction_layer = reduction_layer
 
         for param in self.model.parameters():
             param.requires_grad = False
