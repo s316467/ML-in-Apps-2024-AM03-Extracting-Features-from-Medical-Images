@@ -10,3 +10,46 @@ training/val dataset created
 world size: 1
 model created
 training/val dataset created
+================ Training Loss (Sun May 26 11:06:20 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:08:29 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:09:31 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:14:43 2024) ================
+world size: 1
+model created
+================ Training Loss (Sun May 26 11:16:09 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:18:38 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:40:14 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:45:26 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:52:33 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:57:50 2024) ================
+world size: 1
+model created
+training/val dataset created
+================ Training Loss (Sun May 26 11:59:13 2024) ================
+world size: 1
+model created
+training/val dataset created
