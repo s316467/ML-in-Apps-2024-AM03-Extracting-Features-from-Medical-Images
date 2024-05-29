@@ -66,9 +66,7 @@ class ResNet18Enc(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        print(x.size())
         x = self.maxpool(x)
-        print(x.size())
         x = x.view(x.size(0), -1)
         x = self.linear(x)
         mu = x[:, :self.z_dim]
