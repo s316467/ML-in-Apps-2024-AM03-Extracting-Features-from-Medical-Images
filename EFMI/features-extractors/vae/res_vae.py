@@ -39,15 +39,16 @@ class BasicBlockEnc(nn.Module):
 class ResNet18Enc(nn.Module):
     def __init__(self, num_blocks=[1,1,1,1], z_dim=128, nc=3):
         super().__init__()
-        self.in_planes = 64
-        self.conv1 = nn.Conv2d(nc, 64, kernel_size=3, stride=2, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
+        self.in_planes = 32
+        self.conv1 = nn.Conv2d(nc, 32, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(32)
         self.z_dim = z_dim
         self.layer1 = self._make_layer(BasicBlockEnc, 16, num_blocks[0], stride=2)
         self.layer2 = self._make_layer(BasicBlockEnc, 32, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(BasicBlockEnc, 64, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(BasicBlockEnc, 128, num_blocks[3], stride=2)
-        self.linear = nn.Linear(128 * 16 * 16, 2 * z_dim)
+        self.maxpool = nn.MaxPool2d(4,4)
+        self.linear = nn.Linear(128 * 4 * 4, 2 * z_dim)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         layers = []
@@ -65,6 +66,9 @@ class ResNet18Enc(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
+        print(x.size())
+        x = self.maxpool(x)
+        print(x.size())
         x = x.view(x.size(0), -1)
         x = self.linear(x)
         mu = x[:, :self.z_dim]
@@ -100,7 +104,7 @@ class ResNet18Dec(nn.Module):
     def __init__(self, num_blocks=[1,1,1,1], z_dim=128, nc=3):
         super().__init__()
         self.in_planes = z_dim
-        self.linear = nn.Linear(z_dim, 128 * 16 * 16)
+        self.linear = nn.Linear(z_dim, 128 * 4 * 4)
         self.layer4 = self._make_layer(BasicBlockDec, 128, num_blocks[3], stride=2)
         self.layer3 = self._make_layer(BasicBlockDec, 64, num_blocks[2], stride=2)
         self.layer2 = self._make_layer(BasicBlockDec, 32, num_blocks[1], stride=2)
@@ -119,7 +123,7 @@ class ResNet18Dec(nn.Module):
 
     def forward(self, z):
         x = self.linear(z)
-        x = x.view(z.size(0), 128, 16, 16)
+        x = x.view(z.size(0), 128, 4, 4)
         x = self.layer4(x)
         x = self.layer3(x)
         x = self.layer2(x)
