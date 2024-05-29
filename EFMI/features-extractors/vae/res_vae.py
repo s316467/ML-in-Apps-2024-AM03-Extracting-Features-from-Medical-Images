@@ -102,7 +102,7 @@ class ResNet18Dec(nn.Module):
     def __init__(self, num_blocks=[1,1,1,1], z_dim=128, nc=3):
         super().__init__()
         self.in_planes = z_dim
-        self.linear = nn.Linear(z_dim, 128 * 4 * 4)
+        self.linear = nn.Linear(z_dim, 128 * 16 * 16)
         self.layer4 = self._make_layer(BasicBlockDec, 128, num_blocks[3], stride=2)
         self.layer3 = self._make_layer(BasicBlockDec, 64, num_blocks[2], stride=2)
         self.layer2 = self._make_layer(BasicBlockDec, 32, num_blocks[1], stride=2)
@@ -121,7 +121,7 @@ class ResNet18Dec(nn.Module):
 
     def forward(self, z):
         x = self.linear(z)
-        x = x.view(z.size(0), 128, 4, 4)
+        x = x.view(z.size(0), 128, 16, 16)
         x = self.layer4(x)
         x = self.layer3(x)
         x = self.layer2(x)
@@ -147,7 +147,7 @@ class ResVAE(nn.Module):
         epsilon = torch.randn_like(std)
         return epsilon * std + mean
 
-    def loss_function(recon_x, x, mu, logvar):
+    def loss_function(self, recon_x, x, mu, logvar):
         BCE = nn.functional.binary_cross_entropy(recon_x, x, reduction='sum')
         KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         return BCE + KLD
