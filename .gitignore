@@ -1,4 +1,5 @@
 *.zip
+*.tar
 */training_runs
 __pycache__/
 *.py[cod]
