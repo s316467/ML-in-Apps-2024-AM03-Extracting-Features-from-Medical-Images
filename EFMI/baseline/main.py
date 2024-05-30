@@ -1,24 +1,38 @@
 import argparse
-import torch
 from torch.utils.data import DataLoader
+
+from extractors.densenet import DensenetExtractor
+from extractors.resnet import Resnet50Extractor
 from dataset.PatchedDataset import PatchedDataset
-from resnet import Resnet50Extractor
 import svm
 
 
-def main(args):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def load_extractor(model_name="resnet50", latent_dim=512):
+    supported_models = ["densenet121", "resnet50"]
 
+    if model_name not in supported_models:
+        raise ValueError(
+            f"Unsupported model name '{model_name}'. Supported models: {supported_models}"
+        )
+
+    if model_name == "densenet121":
+        return DensenetExtractor(latent_dim)
+    elif model_name == "resnet50":
+        return Resnet50Extractor(latent_dim)
+
+
+def main(args):
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
 
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    dataloader = DataLoader(
+        dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
+    )
 
-    resnet_extractor = Resnet50Extractor()
+    extractor = load_extractor(args.model, args.latent_dim)
 
-    features, labels = resnet_extractor.extract_features(dataloader)
+    features, labels = extractor.extract_features(dataloader)
 
-    svm.classify(features, labels)
-
+    svm.classify(features, labels, args.experiment_name)
 
 
 if __name__ == "__main__":
@@ -41,7 +55,19 @@ if __name__ == "__main__":
         type=int,
         default=8,
     )
-
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="resnet50",
+        help="Which pretrained baseline model to use as baseline feature extractor, defaults to resnet50. Availables: resnet50, densenet121",
+    )
+    parser.add_argument(
+        "--latent_dim",
+        type=int,
+        default=512,
+        help="Extracted latent vector dimension, defaults to 512",
+    )
+    parser.add_argument("--experiment_name", type=str)
     args = parser.parse_args()
 
     main(args)

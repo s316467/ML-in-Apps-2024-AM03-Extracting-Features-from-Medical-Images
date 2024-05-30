@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 
 
-def classify(latent_vectors, labels):
+def classify(latent_vectors, labels, experiment_name):
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(
         latent_vectors, labels, test_size=0.2, random_state=42
@@ -20,7 +20,13 @@ def classify(latent_vectors, labels):
 
     # Evaluate the classifier
     accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred)
     print("Accuracy:", accuracy)
-    print("Classification Report:\n", classification_report(y_test, y_pred))
+    print("Classification Report:\n", report)
 
-    # TODO store these results somewere
+    with open(f"{experiment_name}.txt", "w") as file:
+        file.write(f"Accuracy: {accuracy}\n")
+        file.write("Classification Report:\n")
+        file.write(report)
+
+    print(f"Results saved to {experiment_name}.txt")
