@@ -5,6 +5,7 @@ import shutil
 import time
 import warnings
 import numpy as np
+import joblib
 
 import torch
 import torch.nn as nn
@@ -24,6 +25,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
+from sklearn.linear_model import SGDClassifier
 
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
@@ -307,71 +309,57 @@ def main():
         return
     
     if args.extract_embeddings:
-        extract_and_save_embeddings(train_loader, val_loader, model)
+        extract_and_save_embeddings(train_loader, val_loader, model, args)
         return
 
 
-def extract_and_save_embeddings(train_loader, val_loader, model):
+def extract_and_save_embeddings(train_loader, val_loader, model, args):
     model.eval()
+    imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
     train_embeddings = []
     train_labels = []
     val_embeddings = []
     val_labels = []
 
-    with torch.no_grad():
-        for i, (input, target) in enumerate(train_loader):
-            if args.gpu is not None:
-                input = input.cuda(args.gpu, non_blocking=True)
-            target = target.cuda(args.gpu, non_blocking=True)
+    def process_loader(loader, embeddings, labels, loader_name=""):
+        with torch.no_grad():
+            for i, (input, target) in enumerate(loader):
+                if args.gpu is not None:
+                    input = input.cuda(args.gpu, non_blocking=True)
+                target = target.cuda(args.gpu, non_blocking=True)
 
-            output = model.features(input)
-            print(f'Output shape before view (train): {output.shape}')
-            output = output.view(output.size(0), -1)
-            print(f'Output shape after view (train): {output.shape}')
-            train_embeddings.append(output.cpu().numpy())
-            train_labels.append(target.cpu().numpy())
-            torch.cuda.empty_cache()  # Clear cache to free memory
+                # Forward pass to get features
+                if isinstance(model, torch.nn.DataParallel):
+                    _, features = model(input)
+                else:
+                    _, features = model.module(input)
+                
+                features = features.view(features.size(0), -1)
+                embeddings.append(features.cpu().numpy())
+                labels.append(target.cpu().numpy())
+                torch.cuda.empty_cache()  # Clear cache to free memory
+                if i % 10 == 0:
+                    print(f"Processed {i} batches for {loader_name}")
 
-        for i, (input, target) in enumerate(val_loader):
-            if args.gpu is not None:
-                input = input.cuda(args.gpu, non_blocking=True)
-            target = target.cuda(args.gpu, non_blocking=True)
-
-            output = model.features(input)
-            print(f'Output shape before view (val): {output.shape}')
-            output = output.view(output.size(0), -1)
-            print(f'Output shape after view (val): {output.shape}')
-            val_embeddings.append(output.cpu().numpy())
-            val_labels.append(target.cpu().numpy())
-            torch.cuda.empty_cache()  # Clear cache to free memory
+    process_loader(train_loader, train_embeddings, train_labels, "train")
+    process_loader(val_loader, val_embeddings, val_labels, "validation")
 
     train_embeddings = np.concatenate(train_embeddings, axis=0)
     train_labels = np.concatenate(train_labels, axis=0)
     val_embeddings = np.concatenate(val_embeddings, axis=0)
     val_labels = np.concatenate(val_labels, axis=0)
+    
     print("Train embeddings shape:", train_embeddings.shape)
     print("Train labels shape:", train_labels.shape)
     print("Val embeddings shape:", val_embeddings.shape)
     print("Val labels shape:", val_labels.shape)
 
-    # Check for NaN values
-    print(f'Number of NaNs in train embeddings before imputation: {np.isnan(train_embeddings).sum()}')
-    print(f'Number of NaNs in val embeddings before imputation: {np.isnan(val_embeddings).sum()}')
-
     # Handle NaN values
-    imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
     train_embeddings = imputer.fit_transform(train_embeddings)
     val_embeddings = imputer.transform(val_embeddings)
     print("NaN values handled.")
-
-    # Check for NaN values after imputation
-    print(f'Number of NaNs in train embeddings after imputation: {np.isnan(train_embeddings).sum()}')
-    print(f'Number of NaNs in val embeddings after imputation: {np.isnan(val_embeddings).sum()}')
-
-    # Ensure embeddings have at least one feature
-    print(f'Train embeddings shape after imputation: {train_embeddings.shape}')
-    print(f'Val embeddings shape after imputation: {val_embeddings.shape}')
-
+    
+    """
     # Apply PCA to reduce the number of embeddings to 128
     pca = PCA(n_components=128)
     train_embeddings_pca = pca.fit_transform(train_embeddings)
@@ -382,19 +370,27 @@ def extract_and_save_embeddings(train_loader, val_loader, model):
     np.save('train_labels.npy', train_labels)
     np.save('val_embeddings_pca.npy', val_embeddings_pca)
     np.save('val_labels.npy', val_labels)
+    """
+    
+    # Incremental learning for large datasets
+    clf = SGDClassifier(loss='hinge')
+    for i in range(0, len(train_embeddings), args.batch_size):
+        end = i + args.batch_size if i + args.batch_size < len(train_embeddings) else len(train_embeddings)
+        clf.partial_fit(train_embeddings[i:end], train_labels[i:end], classes=np.unique(train_labels))
+    
+    # Save the classifier
+    joblib.dump(clf, 'svm_classifier.pkl')
 
-    X_train, X_test, y_train, y_test = train_test_split(train_embeddings_pca, train_labels, test_size=0.2, random_state=42)
-    svm_classifier = SVC(kernel='linear', C=1.0)
-    svm_classifier.fit(X_train, y_train)
-    y_pred = svm_classifier.predict(X_test)
+    # Evaluate on validation set
+    val_pred = clf.predict(val_embeddings)
+    accuracy = accuracy_score(val_labels, val_pred)
+    print("Validation Accuracy:", accuracy)
+    print("Classification Report:\n", classification_report(val_labels, val_pred))
 
-    accuracy = accuracy_score(y_test, y_pred)
-    print("Accuracy:", accuracy)
-    print("Classification Report:\n", classification_report(y_test, y_pred))
-
-    # Generate t-SNE plot if requested
     if args.generate_tsne:
-        generate_tsne(train_embeddings_pca, train_labels)
+        generate_tsne(train_embeddings, train_labels)
+
+
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
@@ -414,7 +410,11 @@ def train(train_loader, model, criterion, optimizer, epoch):
             input = input.cuda(args.gpu, non_blocking=True)
         target = target.cuda(args.gpu, non_blocking=True)
 
-        output = model(input)
+        output = model(input)  # Ensure this output contains the images you want to save
+
+        if isinstance(output, tuple):
+            output = output[0]  # Unpack the first element if the model returns a tuple
+
         loss = criterion(output, target)
 
         prec1, prec5 = accuracy(output, target, topk=(1, 5))
@@ -449,8 +449,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
                     epoch, i, len(train_loader), batch_time=batch_time,
                     data_time=data_time, loss=losses, top1=top1, top5=top5))
             
-            # Save generated images
-            # save_generated_images(output, epoch, i)
+            # Save generated images for current batch
+            # save_generated_images(input, epoch, i)  # Save the input images for reference
+            # save_generated_images(output, epoch, i)  # Save the output images
 
 def validate(val_loader, model, criterion):
     batch_time = AverageMeter()
@@ -467,7 +468,11 @@ def validate(val_loader, model, criterion):
                 input = input.cuda(args.gpu, non_blocking=True)
             target = target.cuda(args.gpu, non_blocking=True)
 
-            output = model(input)
+            output = model(input)  # Ensure this output contains the images you want to save
+
+            if isinstance(output, tuple):
+                output = output[0]  # Unpack the first element if the model returns a tuple
+
             loss = criterion(output, target)
 
             prec1, prec5 = accuracy(output, target, topk=(1, 5))
@@ -504,7 +509,11 @@ def validate(val_loader, model, criterion):
                                  .format(top1=top1, top5=top5))
         
         # Save generated images at the end of validation
-        save_generated_images(output, 'val', 0)
+        # save_generated_images(input, 'val', 0)  # Save the input images for reference
+        # save_generated_images(output, 'val', 0)  # Save the output images
+
+    return top1.avg
+
 
     return top1.avg
 
