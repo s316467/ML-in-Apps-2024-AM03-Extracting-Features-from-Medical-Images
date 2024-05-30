@@ -3,7 +3,6 @@ from torch.utils.data import DataLoader
 
 from extractors.densenet import DensenetExtractor
 from extractors.resnet import Resnet50Extractor
-
 from dataset.PatchedDataset import PatchedDataset
 import svm
 
