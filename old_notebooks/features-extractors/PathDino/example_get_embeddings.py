@@ -3,6 +3,8 @@ from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 from PathDino import get_pathDino_model
 from PIL import Image
 import torch
@@ -41,6 +43,20 @@ def load_images_and_extract_features(folder_path, model, transform):
                 
     return np.array(images), np.array(labels)
 
+# Function to plot t-SNE and save to a file
+def plot_tsne(features, labels, title, filename):
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_results = tsne.fit_transform(features)
+    
+    plt.figure(figsize=(10, 7))
+    plt.scatter(tsne_results[:, 0], tsne_results[:, 1], c=labels, cmap='viridis', s=5)
+    plt.colorbar()
+    plt.title(title)
+    plt.xlabel("t-SNE feature 1")
+    plt.ylabel("t-SNE feature 2")
+    plt.savefig(filename)
+    plt.close()
+
 # Load the model and transformation function
 model, _ = get_pathDino_model(weights_path='./inference/PathDino512.pth')
 
@@ -67,6 +83,9 @@ accuracy = accuracy_score(y_test, y_pred)
 print("Accuracy:", accuracy)
 print("Classification Report:\n", classification_report(y_test, y_pred))
 
+# Plot t-SNE of the PCA-reduced features and save to file
+plot_tsne(X_test, y_pred, title="t-SNE plot of SVM predictions", filename="tsne_plot.png")
+
 """
 # Testing with a new image
 test_image_path = './inference/img.png'
@@ -76,16 +95,17 @@ test_embedding = model(test_image_tensor.unsqueeze(0)).detach().numpy().flatten(
 test_embedding_pca = pca.transform([test_embedding])
 """
 # print(test_embedding_pca.shape)
+
 """
 All patients:
-Accuracy: 0.885073580939033
+Accuracy: 0.8864751226348984
 Classification Report:
                precision    recall  f1-score   support
 
-           0       0.87      0.89      0.88      1376
+           0       0.88      0.89      0.88      1376
            1       0.90      0.88      0.89      1478
 
     accuracy                           0.89      2854
-   macro avg       0.88      0.89      0.88      2854
+   macro avg       0.89      0.89      0.89      2854
 weighted avg       0.89      0.89      0.89      2854
 """
