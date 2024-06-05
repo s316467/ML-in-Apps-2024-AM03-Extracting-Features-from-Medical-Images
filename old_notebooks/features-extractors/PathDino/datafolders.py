@@ -35,6 +35,49 @@ class CustomDatasetFolders(Dataset):
         for root_folder in root_folders:
             for category, label in categories.items():
                 category_path = os.path.join(root_folder, category)
+                print(f"Looking for subfolders in: {category_path}")
+
+                if not os.path.exists(category_path):
+                    print(f"Warning: {category_path} does not exist.")
+                    continue
+
+                for i in range(1, 25):
+                    folder_name = f"{i}.svs"
+                    folder_path = os.path.join(category_path, folder_name)
+
+                    if not os.path.exists(folder_path):
+                        print(f"Warning: {folder_path} does not exist.")
+                        continue
+
+                    print(f"Processing folder: {folder_path}")
+                    image_files = os.listdir(folder_path)
+                    for image_file in image_files:
+                        image_path = os.path.join(folder_path, image_file)
+                        if image_path.lower().endswith(('png', 'jpg', 'jpeg')):
+                            print(f"Found image file: {image_path}")
+                            samples.append(image_path)
+                            labels.append(label)
+
+        if not samples:
+            print("No samples found!")
+        else:
+            print(f"Found {len(samples)} samples.")
+
+        combined = list(zip(samples, labels))
+        random.shuffle(combined)
+        samples, labels = zip(*combined) if combined else ([], [])
+        return list(samples), list(labels)
+    
+    """
+    def _get_samples(self):
+        samples = []
+        labels = []
+        categories = {'in_roi_patches': 0, 'not_roi_patches': 1}  # Assign numeric labels to each category
+        root_folders = self.root_folders
+
+        for root_folder in root_folders:
+            for category, label in categories.items():
+                category_path = os.path.join(root_folder, category)
                 print(f"Looking for image files in: {category_path}")
 
                 if not os.path.exists(category_path):
@@ -58,9 +101,7 @@ class CustomDatasetFolders(Dataset):
         random.shuffle(combined)
         samples, labels = zip(*combined) if combined else ([], [])
         return list(samples), list(labels)
-
-
-    
+    """
     """
     def _get_samples(self):
         samples = []

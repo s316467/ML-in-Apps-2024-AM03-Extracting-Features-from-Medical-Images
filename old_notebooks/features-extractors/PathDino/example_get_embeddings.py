@@ -57,6 +57,16 @@ def plot_tsne(features, labels, title, filename):
     plt.savefig(filename)
     plt.close()
 
+def plot_pca_variance(pca, output_dir):
+    plt.figure()
+    plt.plot(np.cumsum(pca.explained_variance_ratio_))
+    plt.xlabel('Number of Components')
+    plt.ylabel('Variance Explained')
+    plt.title('PCA - Variance Explained by Components')
+    plt.grid()
+    plt.savefig(os.path.join(output_dir, 'pca_variance.png'))
+    plt.close()
+
 # Load the model and transformation function
 model, _ = get_pathDino_model(weights_path='./inference/PathDino512.pth')
 
@@ -67,6 +77,9 @@ latent_vectors, labels = load_images_and_extract_features(folder_path, model, tr
 # Apply PCA to reduce dimensionality to 128
 pca = PCA(n_components=128)
 latent_vectors_pca = pca.fit_transform(latent_vectors)
+
+# Plot PCA variance
+plot_pca_variance(pca, '.')
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(latent_vectors_pca, labels, test_size=0.2, random_state=42)

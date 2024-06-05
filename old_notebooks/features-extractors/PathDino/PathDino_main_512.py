@@ -22,8 +22,10 @@ from torchvision import models as torchvision_models
 from torchinfo import summary
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
+from sklearn.manifold import TSNE
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
+from PathDino import get_pathDino_model
 
 from datafolders import CustomDatasetFolders
 
@@ -129,10 +131,50 @@ def get_args_parser():
     parser.add_argument("--local-rank", default=0, type=int, help="Please ignore and do not set this argument.")
     return parser
 
+def plot_pca_variance(pca, output_dir):
+    # Plot variance explained by each component
+    plt.figure()
+    plt.plot(np.cumsum(pca.explained_variance_ratio_))
+    plt.xlabel('Number of Components')
+    plt.ylabel('Variance Explained')
+    plt.title('PCA - Variance Explained by Components')
+    plt.grid()
+    plt.savefig(os.path.join(output_dir, 'pca_variance.png'))
+    plt.close()
+
+def plot_tsne(features, labels, title, filename):
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_results = tsne.fit_transform(features)
+    
+    plt.figure(figsize=(10, 7))
+    plt.scatter(tsne_results[:, 0], tsne_results[:, 1], c=labels, cmap='viridis', s=5)
+    plt.colorbar()
+    plt.title(title)
+    plt.xlabel("t-SNE feature 1")
+    plt.ylabel("t-SNE feature 2")
+    plt.savefig(filename)
+    plt.close()
+
+def plot_loss(training_losses, output_dir):
+    plt.figure()
+    plt.plot(training_losses, label='Training Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training Loss Over Time')
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, 'training_loss.png'))
+    plt.close()
+
 def extract_embeddings(data_loader, model):
     model.eval()
     embeddings = []
     labels = []
+
+    # Handle DDP/DataParallel models
+    if hasattr(model, 'module'):
+        model_to_use = model.module
+    else:
+        model_to_use = model
 
     with torch.no_grad():
         for i, (images, target) in enumerate(data_loader):
@@ -140,7 +182,7 @@ def extract_embeddings(data_loader, model):
             # Move each image tensor to the GPU
             images = [image.cuda(non_blocking=True) for image in images]
             # Forward pass
-            output = model(images)
+            output = model_to_use(images)
             print(f"Output shape: {output.shape}")
             print(f"Target shape: {target.shape}")
             
@@ -163,6 +205,7 @@ def extract_embeddings(data_loader, model):
     embeddings = np.vstack(embeddings)  # Ensure embeddings are stacked correctly
     labels = np.hstack(labels)
     return embeddings, labels
+
 
 def train_svm_with_pca(embeddings, labels):
     if embeddings.shape[0] != labels.shape[0]:
@@ -230,6 +273,16 @@ def train_dino(args):
 
     print("Student and Teacher are loaded...")
 
+    # Load initial weights
+    weights_path = os.path.join('inference', 'PathDino512.pth')
+    if os.path.exists(weights_path):
+        state_dict = torch.load(weights_path, map_location='cpu')
+        student.load_state_dict(state_dict, strict=False)
+        teacher.load_state_dict(state_dict, strict=False)
+        print(f"Loaded initial weights from {weights_path}")
+    else:
+        print(f"Warning: Initial weights file {weights_path} not found. Proceeding without loading weights.")
+    
     # multi-crop wrapper handles forward with inputs of different resolutions
     student = utils.MultiCropWrapper(student, DINOHead(
         embed_dim,
@@ -242,6 +295,7 @@ def train_dino(args):
         DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
     )
     summary(student, input_size=(1, 3, 512, 512), depth=5)
+
     # move networks to gpu
     student, teacher = student.cuda(), teacher.cuda()
     # synchronize batch norms (if any)
@@ -319,6 +373,10 @@ def train_dino(args):
 
     start_time = time.time()
     print("Starting DINO training !")
+
+    # Initialize list to store training losses
+    training_losses = []
+
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
@@ -326,6 +384,12 @@ def train_dino(args):
         train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
             data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
             epoch, fp16_scaler, args)
+
+        # Append current epoch loss to the list
+        training_losses.append(train_stats['loss'])
+
+        # Plot the loss
+        plot_loss(training_losses, args.output_dir)
 
         # ============ writing logs ... ============
         save_dict = {
@@ -350,23 +414,28 @@ def train_dino(args):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
 
-    # Extract embeddings using the trained student model
-    embeddings, labels = extract_embeddings(data_loader, student.module)
+    # Extract embeddings using the trained teacher model (should be better than student)
+    embeddings, labels = extract_embeddings(data_loader, teacher)
 
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(embeddings, labels, test_size=0.2, random_state=42)
 
-    # Initialize and train the SVM classifier
-    svm_classifier = SVC(kernel='linear', C=1.0)
-    svm_classifier.fit(X_train, y_train)
+    # Train SVM with PCA
+    svm_classifier, pca = train_svm_with_pca(X_train, y_train)
+
+    # Plot PCA variance
+    plot_pca_variance(pca, args.output_dir)
 
     # Predict on the test set
-    y_pred = svm_classifier.predict(X_test)
+    y_pred = svm_classifier.predict(pca.transform(X_test))
 
     # Evaluate the classifier
     accuracy = accuracy_score(y_test, y_pred)
     print("Accuracy:", accuracy)
     print("Classification Report:\n", classification_report(y_test, y_pred))
+    
+    plot_tsne(X_test, y_pred, title="t-SNE plot of SVM predictions", filename=os.path.join(args.output_dir, "tsne_plot.png"))
+
 
 def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loader,
                     optimizer, lr_schedule, wd_schedule, momentum_schedule,epoch,
