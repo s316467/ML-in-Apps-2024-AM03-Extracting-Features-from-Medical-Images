@@ -110,7 +110,7 @@ test_embedding_pca = pca.transform([test_embedding])
 # print(test_embedding_pca.shape)
 
 """
-All patients:
+All patients all embeddings:
 Accuracy: 0.8864751226348984
 Classification Report:
                precision    recall  f1-score   support
