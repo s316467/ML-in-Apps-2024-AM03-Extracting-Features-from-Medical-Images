@@ -25,6 +25,9 @@ from sklearn.svm import SVC
 from sklearn.manifold import TSNE
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
+from sklearn.decomposition import IncrementalPCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 from PathDino import get_pathDino_model
 
 from datafolders import CustomDatasetFolders
@@ -90,7 +93,7 @@ def get_args_parser():
         gradient norm if using gradient clipping. Clipping with norm .3 ~ 1.0 can
         help optimization for larger ViT architectures. 0 for disabling.""")
     # parser.add_argument('--batch_size_per_gpu', default=64, type=int,
-    parser.add_argument('--batch_size_per_gpu', default=128, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
         help='Per-GPU batch-size : number of distinct images loaded on one GPU.')
     parser.add_argument('--epochs', default=30, type=int, help='Number of epochs of training.')
     parser.add_argument('--freeze_last_layer', default=0, type=int, help="""Number of epochs   
@@ -125,7 +128,7 @@ def get_args_parser():
     parser.add_argument('--output_dir', default=".", type=str, help='Path to save logs and checkpoints.')
     parser.add_argument('--saveckp_freq', default=1, type=int, help='Save checkpoint every x epochs.')  
     parser.add_argument('--seed', default=0, type=int, help='Random seed.')
-    parser.add_argument('--num_workers', default=16, type=int, help='Number of data loading workers per GPU.') 
+    parser.add_argument('--num_workers', default=0, type=int, help='Number of data loading workers per GPU.') 
     parser.add_argument("--dist_url", default="env://", type=str, help="""url used to set up
         distributed training; see https://pytorch.org/docs/stable/distributed.html""")
     parser.add_argument("--local-rank", default=0, type=int, help="Please ignore and do not set this argument.")
@@ -143,6 +146,11 @@ def plot_pca_variance(pca, output_dir):
     plt.close()
 
 def plot_tsne(features, labels, title, filename):
+    # Ensure that features is a 2D array
+    features = np.array(features)
+    if len(features.shape) == 1:
+        features = features.reshape(-1, 1)
+    
     tsne = TSNE(n_components=2, random_state=42)
     tsne_results = tsne.fit_transform(features)
     
@@ -196,43 +204,52 @@ def extract_embeddings(data_loader, model):
             repeated_labels = np.repeat(target.cpu().numpy(), output.shape[0] // target.shape[0])
             labels.append(repeated_labels)
 
-    if not embeddings:
-        print("No embeddings found!")
-    else:
-        print(f"Extracted {len(embeddings)} embeddings.")
+            # Process in batches to avoid memory issues
+            if len(embeddings) >= 10:  # Process every 10 batches
+                yield np.vstack(embeddings), np.hstack(labels)
+                embeddings, labels = [], []
 
-    # Stack embeddings and labels
-    embeddings = np.vstack(embeddings)  # Ensure embeddings are stacked correctly
-    labels = np.hstack(labels)
-    return embeddings, labels
+    # Yield remaining data
+    if embeddings:
+        yield np.vstack(embeddings), np.hstack(labels)
 
 
-def train_svm_with_pca(embeddings, labels):
-    if embeddings.shape[0] != labels.shape[0]:
-        raise ValueError(f"Number of embeddings {embeddings.shape[0]} does not match number of labels {labels.shape[0]}")
-
-    if len(np.unique(labels)) < 2:
-        raise ValueError(f"The number of classes has to be greater than one; got {len(np.unique(labels))} class")
-
-    n_components = min(128, embeddings.shape[0])  # Ensure n_components is <= number of samples
-
-    print(f"Training SVM with {embeddings.shape[0]} samples and {labels.shape[0]} labels.")
-    # Apply PCA to reduce dimensionality
-    pca = PCA(n_components=n_components)
-    reduced_embeddings = pca.fit_transform(embeddings)
-    print(f"Reduced embeddings shape: {reduced_embeddings.shape}")
-
-    # Train SVM
+def incremental_pca_svm_train(data_loader, model, n_components=128):
+    pca = IncrementalPCA(n_components=n_components)
     svm = SVC(kernel='linear')
-    svm.fit(reduced_embeddings, labels)
+    scaler = StandardScaler()
 
-    return svm, pca
+    # First pass: Fit PCA
+    for embeddings, labels in extract_embeddings(data_loader, model):
+        pca.partial_fit(embeddings)
+    
+    # Second pass: Transform data and fit SVM
+    for embeddings, labels in extract_embeddings(data_loader, model):
+        reduced_embeddings = pca.transform(embeddings)
+        reduced_embeddings = scaler.fit_transform(reduced_embeddings)
+        svm.fit(reduced_embeddings, labels)
 
-def evaluate_svm(svm, pca, embeddings, labels):
-    reduced_embeddings = pca.transform(embeddings)
-    predictions = svm.predict(reduced_embeddings)
-    accuracy = accuracy_score(labels, predictions)
-    return accuracy
+    return svm, pca, scaler
+
+
+def incremental_pca_svm_evaluate(data_loader, model, svm, pca, scaler):
+    all_embeddings = []
+    all_labels = []
+    
+    for embeddings, labels in extract_embeddings(data_loader, model):
+        reduced_embeddings = pca.transform(embeddings)
+        reduced_embeddings = scaler.transform(reduced_embeddings)
+        all_embeddings.append(reduced_embeddings)
+        all_labels.append(labels)
+        
+    all_embeddings = np.vstack(all_embeddings)
+    all_labels = np.hstack(all_labels)
+    
+    predictions = svm.predict(all_embeddings)
+    accuracy = accuracy_score(all_labels, predictions)
+    print("Accuracy:", accuracy)
+    print("Classification Report:\n", classification_report(all_labels, predictions))
+    return all_labels, predictions
 
 def train_dino(args):
     utils.init_distributed_mode(args)
@@ -255,7 +272,7 @@ def train_dino(args):
         sampler=sampler,
         batch_size=args.batch_size_per_gpu,
         num_workers=args.num_workers,
-        pin_memory=True,
+        pin_memory=False,
         drop_last=True,
     )
     print(f"Data loaded: there are {len(dataset)} images.")
@@ -377,6 +394,8 @@ def train_dino(args):
     # Initialize list to store training losses
     training_losses = []
 
+    """ 
+    # Main training loop
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
@@ -413,28 +432,17 @@ def train_dino(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-
+    """
     # Extract embeddings using the trained teacher model (should be better than student)
-    embeddings, labels = extract_embeddings(data_loader, teacher)
-
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(embeddings, labels, test_size=0.2, random_state=42)
-
-    # Train SVM with PCA
-    svm_classifier, pca = train_svm_with_pca(X_train, y_train)
-
-    # Plot PCA variance
-    plot_pca_variance(pca, args.output_dir)
-
-    # Predict on the test set
-    y_pred = svm_classifier.predict(pca.transform(X_test))
+    svm_classifier, pca, scaler = incremental_pca_svm_train(data_loader, teacher)
 
     # Evaluate the classifier
-    accuracy = accuracy_score(y_test, y_pred)
-    print("Accuracy:", accuracy)
+    y_test, y_pred = incremental_pca_svm_evaluate(data_loader, teacher, svm_classifier, pca, scaler)
+    
+    print("Accuracy:", accuracy_score(y_test, y_pred))
     print("Classification Report:\n", classification_report(y_test, y_pred))
     
-    plot_tsne(X_test, y_pred, title="t-SNE plot of SVM predictions", filename=os.path.join(args.output_dir, "tsne_plot.png"))
+    plot_tsne(y_test, y_pred, title="t-SNE plot of SVM predictions", filename=os.path.join(args.output_dir, "tsne_plot.png"))
 
 
 def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loader,
