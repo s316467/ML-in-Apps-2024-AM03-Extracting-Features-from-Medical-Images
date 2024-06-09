@@ -150,10 +150,16 @@ def plot_tsne(features, labels, title, filename):
     features = np.array(features)
     if len(features.shape) == 1:
         features = features.reshape(-1, 1)
-    
+
+    # Check the number of samples and features
+    n_samples, n_features = features.shape
+    if n_samples < 2 or n_features < 2:
+        print(f"Insufficient data for t-SNE: n_samples={n_samples}, n_features={n_features}")
+        return
+
     tsne = TSNE(n_components=2, random_state=42)
     tsne_results = tsne.fit_transform(features)
-    
+
     plt.figure(figsize=(10, 7))
     plt.scatter(tsne_results[:, 0], tsne_results[:, 1], c=labels, cmap='viridis', s=5)
     plt.colorbar()
@@ -191,8 +197,8 @@ def extract_embeddings(data_loader, model):
             images = [image.cuda(non_blocking=True) for image in images]
             # Forward pass
             output = model_to_use(images)
-            print(f"Output shape: {output.shape}")
-            print(f"Target shape: {target.shape}")
+            print(f"Output shape: {output.shape}")  # Debug statement
+            print(f"Target shape: {target.shape}")  # Debug statement
             
             # Check dimensions of output and target
             if isinstance(output, list):
@@ -394,7 +400,7 @@ def train_dino(args):
     # Initialize list to store training losses
     training_losses = []
 
-    """ 
+    
     # Main training loop
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
@@ -432,7 +438,7 @@ def train_dino(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    """
+    
     # Extract embeddings using the trained teacher model (should be better than student)
     svm_classifier, pca, scaler = incremental_pca_svm_train(data_loader, teacher)
 
