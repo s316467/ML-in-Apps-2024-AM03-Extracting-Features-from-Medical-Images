@@ -69,7 +69,7 @@ def plot_pca_variance(pca, output_dir):
 
 # Load the model and transformation function
 model, _ = get_pathDino_model(weights_path='./inference/PathDino512.pth')
-
+# model, _ = get_pathDino_model(weights_path='./output/PathDino512.pth')
 # Load images and extract features
 folder_path = './CRC_WSIs_no_train_test'
 latent_vectors, labels = load_images_and_extract_features(folder_path, model, transformInput)

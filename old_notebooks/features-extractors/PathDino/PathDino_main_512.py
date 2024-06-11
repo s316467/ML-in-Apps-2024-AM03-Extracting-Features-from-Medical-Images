@@ -76,7 +76,7 @@ def get_args_parser():
     parser.add_argument('--teacher_temp', default=0.04, type=float, help="""Final value (after linear warmup)
         of the teacher temperature. For most experiments, anything above 0.07 is unstable. We recommend
         starting with the default value of 0.04 and increase this slightly if needed.""")
-    parser.add_argument('--warmup_teacher_temp_epochs', default=0, type=int,
+    parser.add_argument('--warmup_teacher_temp_epochs', default=3, type=int,
         help='Number of warmup epochs for the teacher temperature (Default: 30).')
 
     # Training/Optimization parameters
@@ -84,27 +84,27 @@ def get_args_parser():
         to use half precision for training. Improves training time and memory requirements,
         but can provoke instability and slight decay of performance. We recommend disabling
         mixed precision if the loss is unstable, if reducing the patch size or if training with bigger ViTs.""")
-    parser.add_argument('--weight_decay', type=float, default=0.04, help="""Initial value of the
+    parser.add_argument('--weight_decay', type=float, default=0.0004, help="""Initial value of the
         weight decay. With ViT, a smaller value at the beginning of training works well.""")
     parser.add_argument('--weight_decay_end', type=float, default=0.4, help="""Final value of the
         weight decay. We use a cosine schedule for WD and using a larger decay by
         the end of training improves performance for ViTs.""")
-    parser.add_argument('--clip_grad', type=float, default=3.0, help="""Maximal parameter
+    parser.add_argument('--clip_grad', type=float, default=0, help="""Maximal parameter
         gradient norm if using gradient clipping. Clipping with norm .3 ~ 1.0 can
         help optimization for larger ViT architectures. 0 for disabling.""")
     # parser.add_argument('--batch_size_per_gpu', default=64, type=int,
     parser.add_argument('--batch_size_per_gpu', default=8, type=int,
         help='Per-GPU batch-size : number of distinct images loaded on one GPU.')
     parser.add_argument('--epochs', default=30, type=int, help='Number of epochs of training.')
-    parser.add_argument('--freeze_last_layer', default=0, type=int, help="""Number of epochs   
+    parser.add_argument('--freeze_last_layer', default=10, type=int, help="""Number of epochs   
         during which we keep the output layer fixed. Typically doing so during
         the first epoch helps training. Try increasing this value if the loss does not decrease.""")
-    parser.add_argument("--lr", default=0.0005, type=float, help="""Learning rate at the end of
+    parser.add_argument("--lr", default=5e-5, type=float, help="""Learning rate at the end of
         linear warmup (highest LR used during training). The learning rate is linearly scaled
         with the batch size, and specified here for a reference batch size of 256.""")
-    parser.add_argument("--warmup_epochs", default=1, type=int,  
+    parser.add_argument("--warmup_epochs", default=5, type=int,  
         help="Number of epochs for the linear learning-rate warm up.")
-    parser.add_argument('--min_lr', type=float, default=1e-6, help="""Target LR at the
+    parser.add_argument('--min_lr', type=float, default=1e-7, help="""Target LR at the
         end of optimization. We use a cosine LR schedule with linear warmup.""")
     parser.add_argument('--optimizer', default='adamw', type=str,
         choices=['adamw', 'sgd', 'lars'], help="""Type of optimizer. We recommend using adamw with ViTs.""")
@@ -256,6 +256,27 @@ def incremental_pca_svm_evaluate(data_loader, model, svm, pca, scaler):
     print("Accuracy:", accuracy)
     print("Classification Report:\n", classification_report(all_labels, predictions))
     return all_labels, predictions
+
+def compute_mean_std(dataset):
+    loader = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4, shuffle=False)
+    
+    mean = 0.
+    std = 0.
+    nb_samples = 0.
+    
+    for data in loader:
+        data = data[0]  # data[0] because data is a tuple (images, labels)
+        batch_samples = data.size(0)
+        data = data.view(batch_samples, data.size(1), -1)
+        mean += data.mean(2).sum(0)
+        std += data.std(2).sum(0)
+        nb_samples += batch_samples
+    
+    mean /= nb_samples
+    std /= nb_samples
+    
+    return mean, std
+
 
 def train_dino(args):
     utils.init_distributed_mode(args)
@@ -599,7 +620,7 @@ class DataAugmentationDINO(object):
         ])
         normalize = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            transforms.Normalize((0.8688, 0.7047, 0.8022), (0.0803, 0.1345, 0.0987)),
         ])
         
         rotator = transforms.RandomRotation(degrees=(0,360))
@@ -744,4 +765,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('DINO', parents=[get_args_parser()])
     args = parser.parse_args()
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Compute mean and std
+    dataset = datasets.ImageFolder(args.data_path, transform=transforms.ToTensor())
+    mean, std = compute_mean_std(dataset)
+    print(f"Computed mean: {mean}, std: {std}")
+    
     train_dino(args)
