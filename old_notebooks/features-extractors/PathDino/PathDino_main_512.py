@@ -27,6 +27,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.decomposition import IncrementalPCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import make_pipeline
 from PathDino import get_pathDino_model
 
@@ -45,93 +46,44 @@ torchvision_archs = sorted(name for name in torchvision_models.__dict__
 
 def get_args_parser():
     parser = argparse.ArgumentParser('DINO', add_help=False)
-
-    # Model parameters
     parser.add_argument('--arch', default='pathdino', type=str,
-        choices=['pathdino'] \
-                + torchvision_archs + torch.hub.list("facebookresearch/xcit:main"),
-        help="""Name of architecture to train. For quick experiments with ViTs,
-        we recommend using vit_tiny or vit_small.""")
-    parser.add_argument('--patch_size', default=16, type=int, help="""Size in pixels
-        of input square patches - default 16 (for 16x16 patches). Using smaller
-        values leads to better performance but requires more memory. Applies only
-        for ViTs (vit_tiny, vit_small and vit_base). If <16, we recommend disabling
-        mixed precision training (--use_fp16 false) to avoid unstabilities.""")
-    parser.add_argument('--out_dim', default=65536, type=int, help="""Dimensionality of
-        the DINO head output. For complex and large datasets large values (like 65k) work well.""")
-    parser.add_argument('--norm_last_layer', default=True, type=utils.bool_flag,
-        help="""Whether or not to weight normalize the last layer of the DINO head.
-        Not normalizing leads to better performance but can make the training unstable.
-        In our experiments, we typically set this paramater to False with vit_small and True with vit_base.""")
-    parser.add_argument('--momentum_teacher', default=0.996, type=float, help="""Base EMA
-        parameter for teacher update. The value is increased to 1 during training with cosine schedule.
-        We recommend setting a higher value with small batches: for example use 0.9995 with batch size of 256.""")
-    parser.add_argument('--use_bn_in_head', default=False, type=utils.bool_flag,
-        help="Whether to use batch normalizations in projection head (Default: False)")
+        choices=['pathdino'] + torchvision_archs + torch.hub.list("facebookresearch/xcit:main"),
+        help="Name of architecture to train. For quick experiments with ViTs, we recommend using vit_tiny or vit_small.")
+    parser.add_argument('--patch_size', default=16, type=int, help="Size in pixels of input square patches - default 16.")
+    parser.add_argument('--out_dim', default=65536, type=int, help="Dimensionality of the DINO head output.")
+    parser.add_argument('--norm_last_layer', default=True, type=utils.bool_flag, help="Whether or not to weight normalize the last layer of the DINO head.")
+    parser.add_argument('--momentum_teacher', default=0.996, type=float, help="Base EMA parameter for teacher update.")
+    parser.add_argument('--use_bn_in_head', default=False, type=utils.bool_flag, help="Whether to use batch normalizations in projection head.")
 
-    # Temperature teacher parameters
-    parser.add_argument('--warmup_teacher_temp', default=0.04, type=float,
-        help="""Initial value for the teacher temperature: 0.04 works well in most cases.
-        Try decreasing it if the training loss does not decrease.""")
-    parser.add_argument('--teacher_temp', default=0.04, type=float, help="""Final value (after linear warmup)
-        of the teacher temperature. For most experiments, anything above 0.07 is unstable. We recommend
-        starting with the default value of 0.04 and increase this slightly if needed.""")
-    parser.add_argument('--warmup_teacher_temp_epochs', default=3, type=int,
-        help='Number of warmup epochs for the teacher temperature (Default: 30).')
+    parser.add_argument('--warmup_teacher_temp', default=0.4, type=float, help="Initial value for the teacher temperature.")
+    parser.add_argument('--teacher_temp', default=0.04, type=float, help="Final value of the teacher temperature.")
+    parser.add_argument('--warmup_teacher_temp_epochs', default=3, type=int, help='Number of warmup epochs for the teacher temperature.')
 
-    # Training/Optimization parameters
-    parser.add_argument('--use_fp16', type=utils.bool_flag, default=True, help="""Whether or not
-        to use half precision for training. Improves training time and memory requirements,
-        but can provoke instability and slight decay of performance. We recommend disabling
-        mixed precision if the loss is unstable, if reducing the patch size or if training with bigger ViTs.""")
-    parser.add_argument('--weight_decay', type=float, default=0.0004, help="""Initial value of the
-        weight decay. With ViT, a smaller value at the beginning of training works well.""")
-    parser.add_argument('--weight_decay_end', type=float, default=0.4, help="""Final value of the
-        weight decay. We use a cosine schedule for WD and using a larger decay by
-        the end of training improves performance for ViTs.""")
-    parser.add_argument('--clip_grad', type=float, default=0, help="""Maximal parameter
-        gradient norm if using gradient clipping. Clipping with norm .3 ~ 1.0 can
-        help optimization for larger ViT architectures. 0 for disabling.""")
-    # parser.add_argument('--batch_size_per_gpu', default=64, type=int,
-    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
-        help='Per-GPU batch-size : number of distinct images loaded on one GPU.')
-    parser.add_argument('--epochs', default=30, type=int, help='Number of epochs of training.')
-    parser.add_argument('--freeze_last_layer', default=10, type=int, help="""Number of epochs   
-        during which we keep the output layer fixed. Typically doing so during
-        the first epoch helps training. Try increasing this value if the loss does not decrease.""")
-    parser.add_argument("--lr", default=5e-5, type=float, help="""Learning rate at the end of
-        linear warmup (highest LR used during training). The learning rate is linearly scaled
-        with the batch size, and specified here for a reference batch size of 256.""")
-    parser.add_argument("--warmup_epochs", default=5, type=int,  
-        help="Number of epochs for the linear learning-rate warm up.")
-    parser.add_argument('--min_lr', type=float, default=1e-7, help="""Target LR at the
-        end of optimization. We use a cosine LR schedule with linear warmup.""")
-    parser.add_argument('--optimizer', default='adamw', type=str,
-        choices=['adamw', 'sgd', 'lars'], help="""Type of optimizer. We recommend using adamw with ViTs.""")
-    parser.add_argument('--drop_path_rate', type=float, default=0.1, help="stochastic depth rate")
+    parser.add_argument('--use_fp16', type=utils.bool_flag, default=False, help="Whether or not to use half precision for training.")
+    parser.add_argument('--weight_decay', type=float, default=0.0001, help="Initial value of the weight decay.")
+    parser.add_argument('--weight_decay_end', type=float, default=0.1, help="Final value of the weight decay.")
+    parser.add_argument('--clip_grad', type=float, default=0.5, help="Maximal parameter gradient norm for clipping.")
+    parser.add_argument('--batch_size_per_gpu', default=2, type=int, help='Per-GPU batch-size.')
+    parser.add_argument('--epochs', default=5, type=int, help='Number of epochs of training.')
+    parser.add_argument('--freeze_last_layer', default=0, type=int, help="Number of epochs to keep the output layer fixed.")
+    parser.add_argument("--lr", default=5e-4, type=float, help="Learning rate at the end of linear warmup.")
+    parser.add_argument("--warmup_epochs", default=0, type=int, help="Number of epochs for the linear learning-rate warm up.")
+    parser.add_argument('--min_lr', type=float, default=1e-6, help="Target LR at the end of optimization.")
+    parser.add_argument('--optimizer', default='adamw', type=str, choices=['adamw', 'sgd', 'lars'], help="Type of optimizer.")
 
-    # Multi-crop parameters
-    parser.add_argument('--global_crops_scale', type=float, nargs='+', default=(0.4, 1.),
-        help="""Scale range of the cropped image before resizing, relatively to the origin image.
-        Used for large global view cropping. When disabling multi-crop (--local_crops_number 0), we
-        recommand using a wider range of scale ("--global_crops_scale 0.14 1." for example)""")
-    parser.add_argument('--local_crops_number', type=int, default=8, help="""Number of small
-        local views to generate. Set this parameter to 0 to disable multi-crop training.
-        When disabling multi-crop we recommend to use "--global_crops_scale 0.14 1." """)
-    parser.add_argument('--local_crops_scale', type=float, nargs='+', default=(0.05, 0.4),
-        help="""Scale range of the cropped image before resizing, relatively to the origin image.
-        Used for small local view cropping of multi-crop.""")
+    parser.add_argument('--global_crops_scale', type=float, nargs='+', default=(0.8, 1.0), help="Scale range of the cropped image before resizing for large global view cropping.")
+    parser.add_argument('--local_crops_number', type=int, default=8, help="Number of small local views to generate.")
+    parser.add_argument('--local_crops_scale', type=float, nargs='+', default=(0.05, 0.4), help="Scale range of the cropped image before resizing for small local view cropping.")
 
-    # Misc
-    parser.add_argument('--data_path', default='/path/to/histology/image/folder', type=str,
-        help='Please specify path to the ImageNet training data.')
+    parser.add_argument('--train_data_path', default='CRC_WSIs_no_train_test/train', type=str, help='Specify path to the training data.')
+    parser.add_argument('--test_data_path', default='CRC_WSIs_no_train_test/test', type=str, help='Specify path to the testing data.')   
     parser.add_argument('--output_dir', default=".", type=str, help='Path to save logs and checkpoints.')
     parser.add_argument('--saveckp_freq', default=1, type=int, help='Save checkpoint every x epochs.')  
     parser.add_argument('--seed', default=0, type=int, help='Random seed.')
-    parser.add_argument('--num_workers', default=0, type=int, help='Number of data loading workers per GPU.') 
-    parser.add_argument("--dist_url", default="env://", type=str, help="""url used to set up
-        distributed training; see https://pytorch.org/docs/stable/distributed.html""")
-    parser.add_argument("--local-rank", default=0, type=int, help="Please ignore and do not set this argument.")
+    parser.add_argument('--num_workers', default=4, type=int, help='Number of data loading workers per GPU.') 
+    parser.add_argument("--dist_url", default="env://", type=str, help="URL used to set up distributed training.")
+    parser.add_argument("--local-rank", default=0, type=int, help="Ignore and do not set this argument.")
+    parser.add_argument('--drop_path_rate', type=float, default=0.1, help="Stochastic depth rate")  # Added drop_path_rate
     return parser
 
 def plot_pca_variance(pca, output_dir):
@@ -220,41 +172,42 @@ def extract_embeddings(data_loader, model):
         yield np.vstack(embeddings), np.hstack(labels)
 
 
-def incremental_pca_svm_train(data_loader, model, n_components=128):
+def incremental_pca_svm_train(data_loader, model, n_components=128, batch_size=10):
+    # Initialize the PCA, SVM, and Scaler
     pca = IncrementalPCA(n_components=n_components)
-    svm = SVC(kernel='linear')
     scaler = StandardScaler()
+    svm = SGDClassifier(loss='hinge')  # Using SGDClassifier to fit SVM incrementally
 
-    # First pass: Fit PCA
+    # Extract embeddings for all data and fit PCA incrementally
     for embeddings, labels in extract_embeddings(data_loader, model):
         pca.partial_fit(embeddings)
-    
-    # Second pass: Transform data and fit SVM
+
+    # Transform the data using fitted PCA and scale it
     for embeddings, labels in extract_embeddings(data_loader, model):
         reduced_embeddings = pca.transform(embeddings)
         reduced_embeddings = scaler.fit_transform(reduced_embeddings)
-        svm.fit(reduced_embeddings, labels)
+        # Fit the SVM incrementally
+        svm.partial_fit(reduced_embeddings, labels, classes=np.unique(labels))
 
     return svm, pca, scaler
-
 
 def incremental_pca_svm_evaluate(data_loader, model, svm, pca, scaler):
     all_embeddings = []
     all_labels = []
-    
+
     for embeddings, labels in extract_embeddings(data_loader, model):
         reduced_embeddings = pca.transform(embeddings)
         reduced_embeddings = scaler.transform(reduced_embeddings)
         all_embeddings.append(reduced_embeddings)
         all_labels.append(labels)
-        
+
     all_embeddings = np.vstack(all_embeddings)
     all_labels = np.hstack(all_labels)
-    
+
     predictions = svm.predict(all_embeddings)
-    accuracy = accuracy_score(all_labels, predictions)
-    print("Accuracy:", accuracy)
-    print("Classification Report:\n", classification_report(all_labels, predictions))
+    # accuracy = accuracy_score(all_labels, predictions)
+    # print("Accuracy:", accuracy)
+    # print("Classification Report:\n", classification_report(all_labels, predictions))
     return all_labels, predictions
 
 def compute_mean_std(dataset):
@@ -291,18 +244,31 @@ def train_dino(args):
         args.local_crops_scale,
         args.local_crops_number,
     )
-    dataset = CustomDatasetFolders(args.data_path, transform=transform)
+    train_dataset = CustomDatasetFolders(args.train_data_path, transform=transform)
+    test_dataset = CustomDatasetFolders(args.test_data_path, transform=transform)
     
-    sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
-    data_loader = torch.utils.data.DataLoader(
-        dataset,
-        sampler=sampler,
+    train_sampler = torch.utils.data.DistributedSampler(train_dataset, shuffle=True)
+    test_sampler = torch.utils.data.DistributedSampler(test_dataset, shuffle=False)
+    
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        sampler=train_sampler,
         batch_size=args.batch_size_per_gpu,
         num_workers=args.num_workers,
         pin_memory=False,
         drop_last=True,
     )
-    print(f"Data loaded: there are {len(dataset)} images.")
+    
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        sampler=test_sampler,
+        batch_size=args.batch_size_per_gpu,
+        num_workers=args.num_workers,
+        pin_memory=False,
+        drop_last=True,
+    )
+    print(f"Training data loaded: there are {len(train_dataset)} images.")
+    print(f"Testing data loaded: there are {len(test_dataset)} images.")
 
     # ============ building student and teacher networks ... ============
     if args.arch in vits.__dict__.keys():
@@ -318,7 +284,7 @@ def train_dino(args):
     print("Student and Teacher are loaded...")
 
     # Load initial weights
-    weights_path = os.path.join('inference', 'PathDino512.pth')
+    weights_path = os.path.join('.\inference', 'PathDino512.pth')
     if os.path.exists(weights_path):
         state_dict = torch.load(weights_path, map_location='cpu')
         student.load_state_dict(state_dict, strict=False)
@@ -389,17 +355,17 @@ def train_dino(args):
     lr_schedule = utils.cosine_scheduler(
         args.lr * (args.batch_size_per_gpu * utils.get_world_size()) / 256.,  # linear scaling rule
         args.min_lr,
-        args.epochs, len(data_loader),
+        args.epochs, len(train_loader),
         warmup_epochs=args.warmup_epochs,
     )
     wd_schedule = utils.cosine_scheduler(
         args.weight_decay,
         args.weight_decay_end,
-        args.epochs, len(data_loader),
+        args.epochs, len(train_loader),
     )
     # momentum parameter is increased to 1. during training with a cosine schedule
     momentum_schedule = utils.cosine_scheduler(args.momentum_teacher, 1,
-                                               args.epochs, len(data_loader))
+                                               args.epochs, len(train_loader))
     print(f"Loss, optimizer and schedulers ready.")
 
     # ============ optionally resume training ... ============
@@ -417,18 +383,25 @@ def train_dino(args):
 
     start_time = time.time()
     print("Starting DINO training !")
-
+    
+    """
+    # Compute mean and std
+    dataset = datasets.ImageFolder(args.train_data_path, transform=transforms.ToTensor())
+    mean, std = compute_mean_std(dataset)
+    print(f"Computed mean: {mean}, std: {std}")
+    """
+    
     # Initialize list to store training losses
     training_losses = []
 
     
     # Main training loop
     for epoch in range(start_epoch, args.epochs):
-        data_loader.sampler.set_epoch(epoch)
+        train_loader.sampler.set_epoch(epoch)
 
         # ============ training one epoch of DINO ... ============
         train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
-            data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
+            train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
             epoch, fp16_scaler, args)
 
         # Append current epoch loss to the list
@@ -461,10 +434,10 @@ def train_dino(args):
     print('Training time {}'.format(total_time_str))
     
     # Extract embeddings using the trained teacher model (should be better than student)
-    svm_classifier, pca, scaler = incremental_pca_svm_train(data_loader, teacher)
+    svm_classifier, pca, scaler = incremental_pca_svm_train(train_loader, teacher)
 
     # Evaluate the classifier
-    y_test, y_pred = incremental_pca_svm_evaluate(data_loader, teacher, svm_classifier, pca, scaler)
+    y_test, y_pred = incremental_pca_svm_evaluate(test_loader, teacher, svm_classifier, pca, scaler)
     
     print("Accuracy:", accuracy_score(y_test, y_pred))
     print("Classification Report:\n", classification_report(y_test, y_pred))
@@ -620,7 +593,7 @@ class DataAugmentationDINO(object):
         ])
         normalize = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.8688, 0.7047, 0.8022), (0.0803, 0.1345, 0.0987)),
+            transforms.Normalize((0.7584, 0.6039, 0.7131), (0.1377, 0.1771, 0.1331)),
         ])
         
         rotator = transforms.RandomRotation(degrees=(0,360))
@@ -765,10 +738,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('DINO', parents=[get_args_parser()])
     args = parser.parse_args()
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    
-    # Compute mean and std
-    dataset = datasets.ImageFolder(args.data_path, transform=transforms.ToTensor())
-    mean, std = compute_mean_std(dataset)
-    print(f"Computed mean: {mean}, std: {std}")
-    
     train_dino(args)
