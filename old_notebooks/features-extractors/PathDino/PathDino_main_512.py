@@ -23,7 +23,7 @@ from torchinfo import summary
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
 from sklearn.manifold import TSNE
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.decomposition import IncrementalPCA
 from sklearn.preprocessing import StandardScaler
@@ -133,14 +133,19 @@ def extract_embeddings(data_loader, model):
 
     with torch.no_grad():
         for i, (images, target) in enumerate(data_loader):
-            # Move each image tensor to the GPU
-            images = [image.cuda(non_blocking=True) for image in images]
-            # Forward pass
-            output = model_to_use(images)
-            
-            # Assuming the output is a list of embeddings from multiple crops
-            if isinstance(output, list):
-                output = torch.cat(output, dim=0)
+            # Check if images are a list (multi-crop)
+            if isinstance(images, list):
+                images = [image.cuda(non_blocking=True) for image in images]
+                # Forward pass for each crop and concatenate results
+                outputs = []
+                for image in images:
+                    output = model_to_use(image)
+                    outputs.append(output)
+                output = torch.cat(outputs, dim=0)
+            else:
+                images = images.cuda(non_blocking=True)
+                output = model_to_use(images)
+
             embeddings.append(output.cpu().numpy())
 
             # Repeat labels to match the number of embeddings
@@ -202,6 +207,46 @@ def compute_mean_std(dataset):
     
     return mean, std
 
+def fine_tune_model(model, train_loader, test_loader, epochs=10, lr=1e-4):
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+    model.train()
+    
+    for epoch in range(epochs):
+        for images, labels in train_loader:
+            images, labels = images.cuda(), labels.cuda()
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}")
+    
+    # Evaluate on the test set
+    model.eval()
+    test_accuracy = 0
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images, labels = images.cuda(), labels.cuda()
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
+            test_accuracy += torch.sum(preds == labels.data)
+            print(f"Test Accuracy: {test_accuracy / len(test_loader.dataset)}")
+    
+    test_accuracy = test_accuracy / len(test_loader.dataset)
+    print(f'Test Accuracy: {test_accuracy:.4f}')
+    return model
+
+def tune_svm_hyperparameters(train_embeddings, train_labels):
+    param_grid = {
+        'C': [0.1, 1, 10, 100],
+        'kernel': ['linear', 'rbf', 'poly', 'sigmoid'],
+        'gamma': ['scale', 'auto']
+    }
+    grid_search = GridSearchCV(SVC(), param_grid, cv=5)
+    grid_search.fit(train_embeddings, train_labels)
+    print(f"Best parameters: {grid_search.best_params_}")
+    return grid_search.best_estimator_
 
 def train_dino(args):
     utils.init_distributed_mode(args)
@@ -211,11 +256,7 @@ def train_dino(args):
     cudnn.benchmark = True
 
     # ============ preparing data ... ============
-    transform = DataAugmentationDINO(
-        args.global_crops_scale,
-        args.local_crops_scale,
-        args.local_crops_number,
-    )
+    transform = AdvancedDataAugmentation()
     train_dataset = CustomDatasetFolders(args.train_data_path, transform=transform)
     test_dataset = CustomDatasetFolders(args.test_data_path, transform=transform)
     
@@ -404,20 +445,25 @@ def train_dino(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    
-    # Extract embeddings using the trained teacher model (should be better than student)
-    svm_classifier, pca, scaler = incremental_pca_svm_train(train_loader, teacher)
+
+    # ============ fine-tune the student model ============
+    print("Fine-tuning the student model...")
+    fine_tune_model(student, train_loader, test_loader)
+
+    # Extract embeddings using the trained student model
+    print("Extracting embeddings and tuning SVM hyperparameters...")
+    train_embeddings, train_labels = extract_embeddings(train_loader, student)
+    svm_classifier = tune_svm_hyperparameters(train_embeddings, train_labels)
 
     # Evaluate the classifier
-    y_test, y_pred = incremental_pca_svm_evaluate(test_loader, teacher, svm_classifier, pca, scaler)
-    
-    print("Accuracy:", accuracy_score(y_test, y_pred))
-    print("Classification Report:\n", classification_report(y_test, y_pred))
-    
-    # Plot t-SNE with correct features and labels
-    features, _ = extract_embeddings(test_loader, teacher)
-    plot_tsne(features, y_pred, title="t-SNE plot of SVM predictions", filename=os.path.join(args.output_dir, "tsne_plot.png"))
+    test_embeddings, test_labels = extract_embeddings(test_loader, student)
+    predictions = svm_classifier.predict(test_embeddings)
 
+    print("Accuracy:", accuracy_score(test_labels, predictions))
+    print("Classification Report:\n", classification_report(test_labels, predictions))
+
+    # Plot t-SNE with correct features and labels
+    plot_tsne(test_embeddings, predictions, title="t-SNE plot of SVM predictions", filename=os.path.join(args.output_dir, "tsne_plot.png"))
 
 def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loader,
                     optimizer, lr_schedule, wd_schedule, momentum_schedule,epoch,
@@ -707,6 +753,21 @@ class DataAugmentationDINO(object):
         # # # #to check the rotation -------------------------------------------------------
         
         return crops
+
+class AdvancedDataAugmentation:
+    def __init__(self):
+        self.augmentations = transforms.Compose([
+            transforms.RandomResizedCrop(512),
+            transforms.RandomHorizontalFlip(),
+            transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+            transforms.RandomRotation(30),
+            transforms.RandomVerticalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.8274, 0.6960, 0.8404), (0.1215, 0.1697, 0.0978)),
+        ])
+    
+    def __call__(self, image):
+        return self.augmentations(image)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('DINO', parents=[get_args_parser()])

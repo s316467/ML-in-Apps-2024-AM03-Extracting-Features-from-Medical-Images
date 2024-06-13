@@ -9,184 +9,174 @@ from PathDino import get_pathDino_model
 from PIL import Image
 import torch
 import numpy as np
-from torchvision import transforms
+from torchvision import transforms, datasets
+from torch.utils.data import DataLoader, Dataset
+import torch.nn as nn
+import torch.optim as optim
+from torch.cuda.amp import GradScaler, autocast
+
+# Enable CUDA benchmarking
+torch.backends.cudnn.benchmark = True
 
 # Define a transformation to ensure 3 channels (RGB)
+def ensure_three_channels(x):
+    return x.repeat(3, 1, 1) if x.shape[0] == 1 else x
+
 transformInput = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Lambda(lambda x: x.repeat(3, 1, 1) if x.shape[0] == 1 else x),  # Handle grayscale images
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transforms.Lambda(ensure_three_channels),  # Replace lambda with named function
+    transforms.Normalize(mean=[0.7598, 0.6070, 0.7159], std=[0.1377, 0.1774, 0.1328])
 ])
 
-"""
-# Function to load images and extract features
-def load_images_and_extract_features(folder_path, model, transform):
-    images = []
-    labels = []
-    
-    for label, subfolder in enumerate(['in_roi_patches', 'not_roi_patches']):
-        subfolder_path = os.path.join(folder_path, subfolder)
-        
-        for subsubfolder in os.listdir(subfolder_path):
-            subsubfolder_path = os.path.join(subfolder_path, subsubfolder)
-            
-            if os.path.isdir(subsubfolder_path):
-                for filename in os.listdir(subsubfolder_path):
-                    if filename.endswith('.png'):
-                        img_path = os.path.join(subsubfolder_path, filename)
-                        img = Image.open(img_path).convert("RGB")
-                        img_tensor = transform(img)
-                        embedding = model(img_tensor.unsqueeze(0)).detach().numpy().flatten()
-                        
-                        images.append(embedding)
-                        labels.append(label)
-                
-    return np.array(images), np.array(labels)
-"""
+# Custom dataset to load images and labels
+class ImageDataset(Dataset):
+    def __init__(self, folder_path, transform):
+        self.folder_path = folder_path
+        self.transform = transform
+        self.images = []
+        self.labels = []
+        self.load_images()
 
-# Function to load images and extract features
-def load_images_and_extract_features(folder_path, model, transform):
-    images = []
-    labels = []
-    
-    for split in ['train', 'test']:
+    def load_images(self):
         for label, subfolder in enumerate(['in_roi_patches', 'not_roi_patches']):
-            subfolder_path = os.path.join(folder_path, split, subfolder)
-            
+            subfolder_path = os.path.join(self.folder_path, subfolder)
             for subsubfolder in os.listdir(subfolder_path):
                 subsubfolder_path = os.path.join(subfolder_path, subsubfolder)
-                
                 if os.path.isdir(subsubfolder_path):
                     for filename in os.listdir(subsubfolder_path):
                         if filename.endswith('.png'):
                             img_path = os.path.join(subsubfolder_path, filename)
-                            img = Image.open(img_path).convert("RGB")
-                            img_tensor = transform(img)
-                            embedding = model(img_tensor.unsqueeze(0)).detach().numpy().flatten()
-                            
-                            images.append(embedding)
-                            labels.append(label)
-                
-    return np.array(images), np.array(labels)
+                            self.images.append(img_path)
+                            self.labels.append(label)
 
-# Function to plot t-SNE and save to a file
-def plot_tsne(features, labels, title, filename):
-    tsne = TSNE(n_components=2, random_state=42)
-    tsne_results = tsne.fit_transform(features)
-    
-    plt.figure(figsize=(10, 7))
-    plt.scatter(tsne_results[:, 0], tsne_results[:, 1], c=labels, cmap='viridis', s=5)
-    plt.colorbar()
-    plt.title(title)
-    plt.xlabel("t-SNE feature 1")
-    plt.ylabel("t-SNE feature 2")
-    plt.savefig(filename)
-    plt.close()
+    def __len__(self):
+        return len(self.images)
 
-def plot_pca_variance(pca, output_dir):
-    plt.figure()
-    plt.plot(np.cumsum(pca.explained_variance_ratio_))
-    plt.xlabel('Number of Components')
-    plt.ylabel('Variance Explained')
-    plt.title('PCA - Variance Explained by Components')
-    plt.grid()
-    plt.savefig(os.path.join(output_dir, 'pca_variance.png'))
-    plt.close()
+    def __getitem__(self, idx):
+        img_path = self.images[idx]
+        image = Image.open(img_path).convert("RGB")
+        image = self.transform(image)
+        label = self.labels[idx]
+        return image, label
 
-# Load the model and transformation function
-model, _ = get_pathDino_model(weights_path='./inference/PathDino512.pth')
-# model, _ = get_pathDino_model(weights_path='./output/PathDino512.pth')
-# Load images and extract features
-folder_path = './CRC_WSIs_no_train_test'
-# latent_vectors, labels = load_images_and_extract_features(folder_path, model, transformInput)
+# Main function to guard multiprocessing code
+if __name__ == "__main__":
+    # Load the model and fine-tune it
+    model, _ = get_pathDino_model(weights_path='./inference/PathDino512.pth')
+    model = model.cuda()  # Move model to GPU if available
 
-# Apply PCA to reduce dimensionality to 128
-pca = PCA(n_components=128)
-# latent_vectors_pca = pca.fit_transform(latent_vectors)
+    # Ensure model parameters require gradients
+    for param in model.parameters():
+        param.requires_grad = True
 
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# Split the data into training and testing sets manually based on the folder structure
-train_vectors, train_labels = load_images_and_extract_features(os.path.join(folder_path), model, transformInput)
-test_vectors, test_labels = load_images_and_extract_features(os.path.join(folder_path), model, transformInput)
+    # Load the data
+    train_dataset = ImageDataset(os.path.join('./CRC_WSIs_no_train_test', 'train'), transformInput)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, pin_memory=True, num_workers=4)
+    test_dataset = ImageDataset(os.path.join('./CRC_WSIs_no_train_test', 'test'), transformInput)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, pin_memory=True, num_workers=4)
 
-# Apply PCA to the training and testing sets
-train_vectors_pca = pca.fit_transform(train_vectors)
-test_vectors_pca = pca.fit_transform(test_vectors)
+    # Function to plot loss during training
+    def plot_training_loss(losses, output_dir):
+        plt.figure()
+        plt.plot(losses, label='Training Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Training Loss Over Epochs')
+        plt.legend()
+        plt.grid()
+        plt.savefig(os.path.join(output_dir, 'training_loss.png'))
+        plt.close()
 
-# Plot PCA variance
-plot_pca_variance(pca, '.')
+    # Mixed precision training scaler
+    scaler = GradScaler()
 
-# Initialize and train the SVM classifier
-svm_classifier = SVC(kernel='linear', C=1.0)
-svm_classifier.fit(train_vectors_pca, train_labels)
+    # Fine-tune the model
+    num_epochs = 50
+    model.train()
+    training_losses = []
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.cuda(non_blocking=True), labels.cuda(non_blocking=True)
+            optimizer.zero_grad()
+            with autocast():
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            running_loss += loss.item()
+        epoch_loss = running_loss / len(train_loader)
+        training_losses.append(epoch_loss)
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss}")
 
-# Predict on the test set
-y_pred = svm_classifier.predict(test_vectors_pca)
+    # Plot and save the training loss
+    plot_training_loss(training_losses, '.')
 
-# Evaluate the classifier
-accuracy = accuracy_score(test_labels, y_pred)
-print("Accuracy:", accuracy)
-print("Classification Report:\n", classification_report(test_labels, y_pred))
+    # Function to extract features using the fine-tuned model
+    def extract_features(dataloader, model):
+        model.eval()
+        features = []
+        labels = []
+        with torch.no_grad():
+            for inputs, label in dataloader:
+                inputs = inputs.cuda()
+                outputs = model(inputs)
+                features.append(outputs.cpu().numpy())
+                labels.append(label.numpy())
+        features = np.concatenate(features, axis=0)
+        labels = np.concatenate(labels, axis=0)
+        return features, labels
 
-# Plot t-SNE of the PCA-reduced features and save to file
-plot_tsne(test_vectors_pca, y_pred, title="t-SNE plot of SVM predictions", filename="tsne_plot.png")
+    # Extract features for train and test data
+    train_vectors, train_labels = extract_features(train_loader, model)
+    test_vectors, test_labels = extract_features(test_loader, model)
 
-"""
-# no train test spit
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(latent_vectors_pca, labels, test_size=0.2, random_state=42)
+    # Apply PCA to reduce dimensionality to 128
+    pca = PCA(n_components=128)
+    train_vectors_pca = pca.fit_transform(train_vectors)
+    test_vectors_pca = pca.transform(test_vectors)
 
-# Initialize and train the SVM classifier
-svm_classifier = SVC(kernel='linear', C=1.0)
-svm_classifier.fit(X_train, y_train)
+    # Plot PCA variance
+    def plot_pca_variance(pca, output_dir):
+        plt.figure()
+        plt.plot(np.cumsum(pca.explained_variance_ratio_))
+        plt.xlabel('Number of Components')
+        plt.ylabel('Variance Explained')
+        plt.title('PCA - Variance Explained by Components')
+        plt.grid()
+        plt.savefig(os.path.join(output_dir, 'pca_variance.png'))
+        plt.close()
 
-# Predict on the test set
-y_pred = svm_classifier.predict(X_test)
+    plot_pca_variance(pca, '.')
 
-# Evaluate the classifier
-accuracy = accuracy_score(y_test, y_pred)
-print("Accuracy:", accuracy)
-print("Classification Report:\n", classification_report(y_test, y_pred))
+    # Initialize and train the SVM classifier
+    svm_classifier = SVC(kernel='linear', C=1.0)
+    svm_classifier.fit(train_vectors_pca, train_labels)
 
-# Plot t-SNE of the PCA-reduced features and save to file
-plot_tsne(X_test, y_pred, title="t-SNE plot of SVM predictions", filename="tsne_plot.png")
+    # Predict on the test set
+    y_pred = svm_classifier.predict(test_vectors_pca)
 
-"""
-"""
-# Testing with a new image
-test_image_path = './inference/img.png'
-test_image = Image.open(test_image_path).convert("RGB")
-test_image_tensor = transformInput(test_image)
-test_embedding = model(test_image_tensor.unsqueeze(0)).detach().numpy().flatten()
-test_embedding_pca = pca.transform([test_embedding])
-"""
-# print(test_embedding_pca.shape)
+    # Evaluate the classifier
+    accuracy = accuracy_score(test_labels, y_pred)
+    print("Accuracy:", accuracy)
+    print("Classification Report:\n", classification_report(test_labels, y_pred))
 
-"""
-All patients all embeddings no train test split:
-Accuracy: 0.8864751226348984
-Classification Report:
-               precision    recall  f1-score   support
+    # Plot t-SNE of the PCA-reduced features and save to file
+    def plot_tsne(features, labels, title, filename):
+        tsne = TSNE(n_components=2, random_state=42)
+        tsne_results = tsne.fit_transform(features)
+        plt.figure(figsize=(10, 7))
+        plt.scatter(tsne_results[:, 0], tsne_results[:, 1], c=labels, cmap='viridis', s=5)
+        plt.colorbar()
+        plt.title(title)
+        plt.xlabel("t-SNE feature 1")
+        plt.ylabel("t-SNE feature 2")
+        plt.savefig(filename)
+        plt.close()
 
-           0       0.88      0.89      0.88      1376
-           1       0.90      0.88      0.89      1478
-
-    accuracy                           0.89      2854
-   macro avg       0.89      0.89      0.89      2854
-weighted avg       0.89      0.89      0.89      2854
-"""
-
-"""
-All patients all embeddings train test split:
-Accuracy: 0.8877286425117388
-Classification Report:
-               precision    recall  f1-score   support
-
-           0       0.88      0.89      0.88      6880
-           1       0.90      0.89      0.89      7389
-
-    accuracy                           0.89     14269
-   macro avg       0.89      0.89      0.89     14269
-weighted avg       0.89      0.89      0.89     14269
-"""
+    plot_tsne(test_vectors_pca, y_pred, title="t-SNE plot of SVM predictions", filename="tsne_plot.png")
