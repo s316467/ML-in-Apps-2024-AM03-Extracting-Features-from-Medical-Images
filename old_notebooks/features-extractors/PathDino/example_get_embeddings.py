@@ -19,6 +19,7 @@ transformInput = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
+"""
 # Function to load images and extract features
 def load_images_and_extract_features(folder_path, model, transform):
     images = []
@@ -40,6 +41,32 @@ def load_images_and_extract_features(folder_path, model, transform):
                         
                         images.append(embedding)
                         labels.append(label)
+                
+    return np.array(images), np.array(labels)
+"""
+
+# Function to load images and extract features
+def load_images_and_extract_features(folder_path, model, transform):
+    images = []
+    labels = []
+    
+    for split in ['train', 'test']:
+        for label, subfolder in enumerate(['in_roi_patches', 'not_roi_patches']):
+            subfolder_path = os.path.join(folder_path, split, subfolder)
+            
+            for subsubfolder in os.listdir(subfolder_path):
+                subsubfolder_path = os.path.join(subfolder_path, subsubfolder)
+                
+                if os.path.isdir(subsubfolder_path):
+                    for filename in os.listdir(subsubfolder_path):
+                        if filename.endswith('.png'):
+                            img_path = os.path.join(subsubfolder_path, filename)
+                            img = Image.open(img_path).convert("RGB")
+                            img_tensor = transform(img)
+                            embedding = model(img_tensor.unsqueeze(0)).detach().numpy().flatten()
+                            
+                            images.append(embedding)
+                            labels.append(label)
                 
     return np.array(images), np.array(labels)
 
@@ -72,15 +99,41 @@ model, _ = get_pathDino_model(weights_path='./inference/PathDino512.pth')
 # model, _ = get_pathDino_model(weights_path='./output/PathDino512.pth')
 # Load images and extract features
 folder_path = './CRC_WSIs_no_train_test'
-latent_vectors, labels = load_images_and_extract_features(folder_path, model, transformInput)
+# latent_vectors, labels = load_images_and_extract_features(folder_path, model, transformInput)
 
 # Apply PCA to reduce dimensionality to 128
 pca = PCA(n_components=128)
-latent_vectors_pca = pca.fit_transform(latent_vectors)
+# latent_vectors_pca = pca.fit_transform(latent_vectors)
+
+
+# Split the data into training and testing sets manually based on the folder structure
+train_vectors, train_labels = load_images_and_extract_features(os.path.join(folder_path), model, transformInput)
+test_vectors, test_labels = load_images_and_extract_features(os.path.join(folder_path), model, transformInput)
+
+# Apply PCA to the training and testing sets
+train_vectors_pca = pca.fit_transform(train_vectors)
+test_vectors_pca = pca.fit_transform(test_vectors)
 
 # Plot PCA variance
 plot_pca_variance(pca, '.')
 
+# Initialize and train the SVM classifier
+svm_classifier = SVC(kernel='linear', C=1.0)
+svm_classifier.fit(train_vectors_pca, train_labels)
+
+# Predict on the test set
+y_pred = svm_classifier.predict(test_vectors_pca)
+
+# Evaluate the classifier
+accuracy = accuracy_score(test_labels, y_pred)
+print("Accuracy:", accuracy)
+print("Classification Report:\n", classification_report(test_labels, y_pred))
+
+# Plot t-SNE of the PCA-reduced features and save to file
+plot_tsne(test_vectors_pca, y_pred, title="t-SNE plot of SVM predictions", filename="tsne_plot.png")
+
+"""
+# no train test spit
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(latent_vectors_pca, labels, test_size=0.2, random_state=42)
 
@@ -100,6 +153,7 @@ print("Classification Report:\n", classification_report(y_test, y_pred))
 plot_tsne(X_test, y_pred, title="t-SNE plot of SVM predictions", filename="tsne_plot.png")
 
 """
+"""
 # Testing with a new image
 test_image_path = './inference/img.png'
 test_image = Image.open(test_image_path).convert("RGB")
@@ -110,7 +164,7 @@ test_embedding_pca = pca.transform([test_embedding])
 # print(test_embedding_pca.shape)
 
 """
-All patients all embeddings:
+All patients all embeddings no train test split:
 Accuracy: 0.8864751226348984
 Classification Report:
                precision    recall  f1-score   support
@@ -121,4 +175,18 @@ Classification Report:
     accuracy                           0.89      2854
    macro avg       0.89      0.89      0.89      2854
 weighted avg       0.89      0.89      0.89      2854
+"""
+
+"""
+All patients all embeddings train test split:
+Accuracy: 0.8877286425117388
+Classification Report:
+               precision    recall  f1-score   support
+
+           0       0.88      0.89      0.88      6880
+           1       0.90      0.89      0.89      7389
+
+    accuracy                           0.89     14269
+   macro avg       0.89      0.89      0.89     14269
+weighted avg       0.89      0.89      0.89     14269
 """
