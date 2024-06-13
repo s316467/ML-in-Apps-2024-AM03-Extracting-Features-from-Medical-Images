@@ -98,17 +98,6 @@ def plot_pca_variance(pca, output_dir):
     plt.close()
 
 def plot_tsne(features, labels, title, filename):
-    # Ensure that features is a 2D array
-    features = np.array(features)
-    if len(features.shape) == 1:
-        features = features.reshape(-1, 1)
-
-    # Check the number of samples and features
-    n_samples, n_features = features.shape
-    if n_samples < 2 or n_features < 2:
-        print(f"Insufficient data for t-SNE: n_samples={n_samples}, n_features={n_features}")
-        return
-
     tsne = TSNE(n_components=2, random_state=42)
     tsne_results = tsne.fit_transform(features)
 
@@ -144,17 +133,13 @@ def extract_embeddings(data_loader, model):
 
     with torch.no_grad():
         for i, (images, target) in enumerate(data_loader):
-            print(f"Processing batch {i + 1}/{len(data_loader)}")
             # Move each image tensor to the GPU
             images = [image.cuda(non_blocking=True) for image in images]
             # Forward pass
             output = model_to_use(images)
-            print(f"Output shape: {output.shape}")  # Debug statement
-            print(f"Target shape: {target.shape}")  # Debug statement
             
-            # Check dimensions of output and target
+            # Assuming the output is a list of embeddings from multiple crops
             if isinstance(output, list):
-                # Assuming the output is a list of embeddings from multiple crops
                 output = torch.cat(output, dim=0)
             embeddings.append(output.cpu().numpy())
 
@@ -162,53 +147,40 @@ def extract_embeddings(data_loader, model):
             repeated_labels = np.repeat(target.cpu().numpy(), output.shape[0] // target.shape[0])
             labels.append(repeated_labels)
 
-            # Process in batches to avoid memory issues
-            if len(embeddings) >= 10:  # Process every 10 batches
-                yield np.vstack(embeddings), np.hstack(labels)
-                embeddings, labels = [], []
-
-    # Yield remaining data
-    if embeddings:
-        yield np.vstack(embeddings), np.hstack(labels)
+    embeddings = np.vstack(embeddings)
+    labels = np.hstack(labels)
+    return embeddings, labels
 
 
-def incremental_pca_svm_train(data_loader, model, n_components=128, batch_size=10):
+def incremental_pca_svm_train(train_loader, model, n_components=128, batch_size=10):
     # Initialize the PCA, SVM, and Scaler
     pca = IncrementalPCA(n_components=n_components)
     scaler = StandardScaler()
-    svm = SGDClassifier(loss='hinge')  # Using SGDClassifier to fit SVM incrementally
+    svm = SGDClassifier(loss='hinge', max_iter=1000, tol=1e-3)  # Using SGDClassifier to fit SVM incrementally
 
-    # Extract embeddings for all data and fit PCA incrementally
-    for embeddings, labels in extract_embeddings(data_loader, model):
-        pca.partial_fit(embeddings)
-
-    # Transform the data using fitted PCA and scale it
-    for embeddings, labels in extract_embeddings(data_loader, model):
-        reduced_embeddings = pca.transform(embeddings)
-        reduced_embeddings = scaler.fit_transform(reduced_embeddings)
-        # Fit the SVM incrementally
-        svm.partial_fit(reduced_embeddings, labels, classes=np.unique(labels))
+    # Extract embeddings for all data
+    embeddings, labels = extract_embeddings(train_loader, model)
+    
+    # Scale and fit PCA
+    embeddings = scaler.fit_transform(embeddings)
+    pca.fit(embeddings)
+    
+    # Transform the data using fitted PCA
+    reduced_embeddings = pca.transform(embeddings)
+    
+    # Fit the SVM
+    svm.fit(reduced_embeddings, labels)
 
     return svm, pca, scaler
 
-def incremental_pca_svm_evaluate(data_loader, model, svm, pca, scaler):
-    all_embeddings = []
-    all_labels = []
+def incremental_pca_svm_evaluate(test_loader, model, svm, pca, scaler):
+    embeddings, labels = extract_embeddings(test_loader, model)
+    embeddings = scaler.transform(embeddings)
+    reduced_embeddings = pca.transform(embeddings)
 
-    for embeddings, labels in extract_embeddings(data_loader, model):
-        reduced_embeddings = pca.transform(embeddings)
-        reduced_embeddings = scaler.transform(reduced_embeddings)
-        all_embeddings.append(reduced_embeddings)
-        all_labels.append(labels)
-
-    all_embeddings = np.vstack(all_embeddings)
-    all_labels = np.hstack(all_labels)
-
-    predictions = svm.predict(all_embeddings)
-    # accuracy = accuracy_score(all_labels, predictions)
-    # print("Accuracy:", accuracy)
-    # print("Classification Report:\n", classification_report(all_labels, predictions))
-    return all_labels, predictions
+    predictions = svm.predict(reduced_embeddings)
+    
+    return labels, predictions
 
 def compute_mean_std(dataset):
     loader = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4, shuffle=False)
@@ -442,7 +414,9 @@ def train_dino(args):
     print("Accuracy:", accuracy_score(y_test, y_pred))
     print("Classification Report:\n", classification_report(y_test, y_pred))
     
-    plot_tsne(y_test, y_pred, title="t-SNE plot of SVM predictions", filename=os.path.join(args.output_dir, "tsne_plot.png"))
+    # Plot t-SNE with correct features and labels
+    features, _ = extract_embeddings(test_loader, teacher)
+    plot_tsne(features, y_pred, title="t-SNE plot of SVM predictions", filename=os.path.join(args.output_dir, "tsne_plot.png"))
 
 
 def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loader,
@@ -593,7 +567,7 @@ class DataAugmentationDINO(object):
         ])
         normalize = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.7584, 0.6039, 0.7131), (0.1377, 0.1771, 0.1331)),
+            transforms.Normalize((0.8274, 0.6960, 0.8404), (0.1215, 0.1697, 0.0978)),
         ])
         
         rotator = transforms.RandomRotation(degrees=(0,360))
