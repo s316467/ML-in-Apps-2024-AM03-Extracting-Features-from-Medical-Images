@@ -95,7 +95,7 @@ if __name__ == "__main__":
     scaler = GradScaler()
 
     # Fine-tune the model
-    num_epochs = 50
+    num_epochs = 10
     model.train()
     training_losses = []
     for epoch in range(num_epochs):
@@ -106,6 +106,9 @@ if __name__ == "__main__":
             with autocast():
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
+            if torch.isnan(loss):
+                print(f"NaN loss encountered at epoch {epoch+1}")
+                continue
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
