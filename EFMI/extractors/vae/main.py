@@ -4,7 +4,7 @@ import numpy as np
 from dataset.PatchedDataset import PatchedDataset
 from torch.utils.data import DataLoader
 from train import train
-import baseline.svm as svm
+import classifier.svm as svm
 
 
 # extract latent vectors for the entire dataset

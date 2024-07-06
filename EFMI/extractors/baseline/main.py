@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from models.densenet import DensenetExtractor
 from models.resnet import Resnet50Extractor
 from dataset.PatchedDataset import PatchedDataset
-import svm
+import classifier.svm as svm
 
 
 def load_extractor(model_name="resnet50", latent_dim=512):

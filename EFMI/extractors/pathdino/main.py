@@ -4,7 +4,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from sklearn.decomposition import PCA
 from pathdino.extractor import extract_features
-import baseline.svm as svm
+import classifier.svm as svm
 from EFMI.utils.plotting import *
 from dataset.PatchedDataset import PatchedDataset
 from model.PathDino import get_pathDino_model
