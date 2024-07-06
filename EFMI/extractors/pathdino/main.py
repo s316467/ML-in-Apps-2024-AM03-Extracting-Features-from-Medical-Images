@@ -1,11 +1,12 @@
 import argparse
+from time import strftime
 import torch
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from sklearn.decomposition import PCA
-from pathdino.extractor import extract_features
+from extractor import extract_features
 import classifier.svm as svm
-from EFMI.utils.plotting import *
+from utils.plotting import *
 from dataset.PatchedDataset import PatchedDataset
 from model.PathDino import get_pathDino_model
 import torch.nn as nn
@@ -27,7 +28,7 @@ custom_transform = transforms.Compose(
 )
 
 
-def fine_tune(model, dataset, num_epochs, batch_size):
+def fine_tune(model, dataset, batch_size, num_epochs):
     criterion = nn.CrossEntropyLoss()  # ????
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     scaler = GradScaler()  # Mixed precision training scaler
@@ -47,7 +48,7 @@ def fine_tune(model, dataset, num_epochs, batch_size):
     training_losses = []
     for epoch in range(num_epochs):
         running_loss = 0.0
-        for inputs, labels in train_loader:
+        for inputs, labels, p_id, coords in train_loader:
             inputs, labels = inputs.cuda(non_blocking=True), labels.cuda(
                 non_blocking=True
             )
@@ -90,17 +91,10 @@ def main(args):
     if args.fine_tune:
         pathdino = fine_tune(pathdino, dataset, args.batch_size, args.fine_tune_epochs)
 
-    features, labels = extract_features(dataloader)
+    features, labels = extract_features(dataloader, pathdino)
 
     svm.classify(
-        features, labels, args.results_path, with_pca=True, pca_components=128
-    )
-
-    plot_tsne(
-        test_vectors_pca,
-        y_pred,
-        title="t-SNE plot of SVM predictions",
-        filename="tsne_plot.png",
+        features, labels, args.results_path, with_pca=True, pca_components=args.latent_dim
     )
 
 
@@ -130,12 +124,13 @@ if __name__ == "__main__":
         help="Extracted latent vector dimension, defaults to 128",
     )
     parser.add_argument(
-        "--pretrained_dino_path", type="str", help="PathDino pretrained weights path"
+        "--pretrained_dino_path", type=str, help="PathDino pretrained weights path"
     )
     parser.add_argument(
         "--fine_tune",
-        action="store_true",
-        help="Wheter to finetune the pretrained dino",
+        type=str,
+        default="finetune",
+        help="Wheter to finetune the pretrained dino. finetune := yes",
     )
     parser.add_argument(
         "--fine_tune_epochs",
@@ -148,7 +143,6 @@ if __name__ == "__main__":
         type=str,
         help="Name of the experiment, save results in this path.",
     )
-    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
-
+    args.fine_tune = True if args.fine_tune == "finetune" else False
     main(args)

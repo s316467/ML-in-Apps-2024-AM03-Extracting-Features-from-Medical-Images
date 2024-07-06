@@ -8,7 +8,7 @@ def extract_features(dataloader, model):
     features = []
     labels = []
     with torch.no_grad():
-        for inputs, label in dataloader:
+        for inputs, label, p_id, coords in dataloader:
             inputs = inputs.cuda()
             outputs = model(inputs)
             features.append(outputs.cpu().numpy())
