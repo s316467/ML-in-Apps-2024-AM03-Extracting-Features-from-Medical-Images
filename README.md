@@ -10,14 +10,11 @@ pip-install -r requirements.txt #inside EFMI
 ```
 
 
-
-<br></br>
 ## Extract patches from WSI images
 To extract annotated patches from wsi images, run ```EFMI/launch_scripts/extract-patches.sh DATASET_PATH NOT_ROI_PATH ROI_PATH PATCH_SIZE MAG_LEVEL```. This requires that ```DATASET_PATH``` contains both svs image files and xml annotation files. The mapping svs -> xml is given by their names, i.e ```1.svs -> 1.xml```. This will extract patches and save them with this pattern: ```{x}_{y}_mag{mag_level}.png```
 
 
 
-<br></br>
 ## Example usage of the PatchedDataset class
 Note that patches must have this file name: ```{x}_{y}_mag{mag_level}.png```
 
@@ -43,12 +40,18 @@ ds = PatchedDataset(rootdir, transform)
 dataloader = DataLoader(ds, batch_size=8, shuffle=True)
 ```
 
-<br></br>
+
 ## Run the baseline
-To test the resnet50 baseline latents with the svm classifier, simply run ```EFMI/launch_scripts/test-baseline.sh root_dir num_images batch_size```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the baseline, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size (defaults to 8).
+To test one of the baseline latents with an svm classifier. Run ```EFMI/launch_scripts/test-baseline.sh root_dir num_images batch_size model_name latent_dim experiment_name```. The ```root_dir``` param is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the baseline, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size (defaults to 16). ```model_name``` specifies which pretrained baseline model to use as baseline feature extractor, defaults to resnet50. Availables: resnet50, densenet121. ```latent_dim``` specifies the extracted feature dimensionality (latent dimensions, defaults to 128). ```results_path``` specifies the file path in which to save experiment results.
 
 
 
-<br></br>
-## Test the VAE latents with SVM classifier
-To test the VAE latents with the svm classifier, simply run ```EFMI/launch_scripts/test-vae.sh root_dir num_images batch_size latent_dim```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the VAE, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size with which to train the VAE (defaults to 8), ```latent_dim``` specifies the extract latents dimension (defaults to 100).
+# Feature extractors
+## VAE
+To test the custom VAE latents with the svm classifier, simply run ```EFMI/launch_scripts/test-vae.sh root_dir num_images batch_size latent_dim```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the VAE, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size with which to train the VAE (defaults to 16), ```latent_dim``` specifies the extract latents dimension (defaults to 100).
+
+## PathDINO
+...
+
+## BYOL
+..
