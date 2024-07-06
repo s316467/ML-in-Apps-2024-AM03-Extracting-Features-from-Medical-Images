@@ -1,7 +1,7 @@
 import torch.nn as nn
 from torchvision.models import resnet50, ResNet50_Weights
 
-from baseline.extractor import BaselineExtractor
+from extractors.baseline.extractor import BaselineExtractor
 
 
 class Resnet50Extractor(BaselineExtractor):

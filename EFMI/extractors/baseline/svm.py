@@ -41,7 +41,7 @@ def classify(
     print("Accuracy:", accuracy)
     print("Classification Report:\n", report)
 
-    with open(f"../results/{experiment_name}.txt", "w") as file:
+    with open(f"./{experiment_name}.txt", "w") as file:
         file.write(f"Accuracy: {accuracy}\n")
         file.write("Classification Report:\n")
         file.write(report)

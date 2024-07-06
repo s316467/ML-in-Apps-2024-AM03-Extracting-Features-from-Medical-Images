@@ -11,7 +11,7 @@ def load_extractor(model_name="resnet50", latent_dim=512):
     supported_models = ["densenet121", "resnet50"]
 
     assert (
-        model_name not in supported_models
+        model_name in supported_models
     ), f"Unsupported model name '{model_name}'. Supported models: {supported_models}"
 
     if model_name == "densenet121":

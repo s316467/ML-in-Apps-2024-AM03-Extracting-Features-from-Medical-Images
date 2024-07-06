@@ -1,7 +1,7 @@
 import torch.nn as nn
 from torchvision.models import densenet121, DenseNet121_Weights
 
-from baseline.extractor import BaselineExtractor
+from extractors.baseline.extractor import BaselineExtractor
 
 
 class DensenetExtractor(BaselineExtractor):
