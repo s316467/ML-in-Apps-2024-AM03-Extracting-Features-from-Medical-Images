@@ -8,3 +8,4 @@
 - Fix results paths
 - fix verbose args and vae args
 - add vae num epochs
+- add model checkpoints to pathdino
