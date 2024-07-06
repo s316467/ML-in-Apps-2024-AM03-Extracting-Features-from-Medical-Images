@@ -26,8 +26,8 @@ def extract_latent_vectors(model, dataloader, device):
 def extract_latents(model, dataloader, device):
     latent_vectors, labels = extract_latent_vectors(model, dataloader, device)
 
-    np.save("latent_vectors_vae.npy", latent_vectors)
-    np.save("labels_vae.npy", labels)
+    np.save("vae_latents.npy", latent_vectors)
+    np.save("vae_labels.npy", labels)
 
     return (latent_vectors, labels)
 
@@ -52,7 +52,7 @@ def main(args):
     latents, labels = extract_latents(VAE_trained, dataloader, device)
 
     print("Classifying latents with SVMs...")
-    svm.classify(latents, labels)
+    svm.classify(latents, labels, args.results_path)
 
 
 if __name__ == "__main__":
@@ -73,12 +73,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=8,
+        default=16,
     )
     parser.add_argument(
         "--latent_dim",
         type=int,
-        default=100,
+        default=128,
+    )
+    parser.add_argument(
+        "--results_path",
+        type=str,
+        help="Name of the experiment, save results in this path.",
     )
 
     args = parser.parse_args()
