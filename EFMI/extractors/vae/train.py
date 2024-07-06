@@ -25,7 +25,7 @@ def train(dataloader, device, latent_dim):
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # Training loop
-    num_epochs = 100
+    num_epochs = 1
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0

@@ -93,7 +93,7 @@ def main(args):
     features, labels = extract_features(dataloader)
 
     svm.classify(
-        features, labels, args.experiment_name, with_pca=True, pca_components=128
+        features, labels, args.results_path, with_pca=True, pca_components=128
     )
 
     plot_tsne(
@@ -142,6 +142,11 @@ if __name__ == "__main__":
         type=int,
         default=10,
         help="Number of epochs for finetuning",
+    )
+    parser.add_argument(
+        "--results_path",
+        type=str,
+        help="Name of the experiment, save results in this path.",
     )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
