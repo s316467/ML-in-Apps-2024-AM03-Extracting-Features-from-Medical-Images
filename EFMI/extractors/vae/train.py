@@ -13,7 +13,7 @@ def loss_function(recon_x, x, mu, logvar):
     return BCE + KLD
 
 
-def train(dataloader, device, latent_dim, vae_type):
+def train(dataloader, device, latent_dim, num_epochs, vae_type):
 
     current_epochs = 0
 
@@ -31,7 +31,6 @@ def train(dataloader, device, latent_dim, vae_type):
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # Training loop
-    num_epochs = 1
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0

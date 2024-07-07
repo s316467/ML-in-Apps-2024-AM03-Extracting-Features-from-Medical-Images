@@ -83,6 +83,11 @@ if __name__ == "__main__":
         default=128,
     )
     parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=50,
+    )
+    parser.add_argument(
         "--vae_type",
         type=str,
         default="vae",
@@ -97,3 +102,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+gi
