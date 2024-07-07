@@ -46,7 +46,9 @@ def main(args):
 
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
-    VAE_trained = train(dataloader, device, latent_dim=args.latent_dim)
+    VAE_trained = train(
+        dataloader, device, latent_dim=args.latent_dim, vae_type=args.vae_type
+    )
 
     print("Extracting latents...")
     latents, labels = extract_latents(VAE_trained, dataloader, device)
@@ -73,12 +75,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=16,
+        default=32,
     )
     parser.add_argument(
         "--latent_dim",
         type=int,
         default=128,
+    )
+    parser.add_argument(
+        "--vae_type",
+        type=str,
+        default="vae",
+        help="Choose which VAE to train, supported: [vae, resvae]",
     )
     parser.add_argument(
         "--results_path",

@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
 from tqdm import tqdm
+from res_vae import ResVAE
 from model import VAE
 
 
@@ -13,13 +13,19 @@ def loss_function(recon_x, x, mu, logvar):
     return BCE + KLD
 
 
-def train(dataloader, device, latent_dim):
+def train(dataloader, device, latent_dim, vae_type):
 
     current_epochs = 0
 
-    model = VAE(latent_dim=latent_dim).to(device)
+    if vae_type == "vae":
+        model = VAE(latent_dim)
+    if vae_type == "resvae":
+        model = ResVAE(latent_dim)
+
+    model.to(device)
+
     try:
-        model.load_state_dict(torch.load(f"vae_model_{current_epochs}.pth"))
+        model.load_state_dict(torch.load(f"{vae_type}_model_{current_epochs}.pth"))
         print("Model loaded correctly!")
     except:
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
@@ -43,8 +49,8 @@ def train(dataloader, device, latent_dim):
             f"Epoch {epoch+current_epochs+1}/{num_epochs}, Loss: {total_loss / len(dataloader.dataset):.4f}"
         )
         if (epoch + 1) % 2 == 0 and epoch > 0:
-            torch.save(model.state_dict(), f"vae_{epoch+current_epochs+1}.pth")
+            torch.save(model.state_dict(), f"{vae_type}_{epoch+current_epochs+1}.pth")
 
     # Save the trained model
-    torch.save(model.state_dict(), f"vae_100.pth")
+    torch.save(model.state_dict(), f"{vae_type}_100.pth")
     return model

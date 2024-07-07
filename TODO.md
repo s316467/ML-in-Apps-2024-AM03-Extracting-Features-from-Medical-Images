@@ -1,11 +1,12 @@
 # TODO file to keep the project nice and clean
+- PathDino nan losses, crossentropy loss?
+- save path dino feature and labels npy
 
-- Extract device, results_path into a global
-- Download the patched dataset in a ./DATA folder on test runs
-- unpack args in main call: main(arg1, arg2) instead of main(args)
-- add vae backbone selection (vae/res-vae)
-- refactor extract feature function
-- Fix results paths
-- fix verbose args and vae args
 - add vae num epochs
-- add model checkpoints to pathdino
+
+- refactor extract feature function
+- Extract device, results_path into a global
+- fix verbose args and vae args
+- unpack args in main call: main(arg1, arg2) instead of main(args)
+
+- Download the patched dataset in a ./DATA folder on test runs
