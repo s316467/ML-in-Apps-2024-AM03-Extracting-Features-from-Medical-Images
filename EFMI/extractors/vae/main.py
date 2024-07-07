@@ -1,35 +1,10 @@
 import argparse
 import torch
-import numpy as np
+from extractor import extract_latents
 from dataset.PatchedDataset import PatchedDataset
 from torch.utils.data import DataLoader
-from train import train
+from models.train import train
 import classifier.svm as svm
-
-
-# extract latent vectors for the entire dataset
-def extract_latent_vectors(model, dataloader, device):
-    latent_vectors = []
-    labels = []
-    model.eval()
-    with torch.no_grad():
-        for data, target, _, _ in dataloader:
-            data = data.to(device)
-            target = target.to(device)
-            mu, logvar = model.encode(data)
-            latent_vector = model.reparameterize(mu, logvar)
-            latent_vectors.append(latent_vector.cpu().numpy())
-            labels.append(target.cpu().numpy())
-    return np.concatenate(latent_vectors), np.concatenate(labels)
-
-
-def extract_latents(model, dataloader, device):
-    latent_vectors, labels = extract_latent_vectors(model, dataloader, device)
-
-    np.save("vae_latents.npy", latent_vectors)
-    np.save("vae_labels.npy", labels)
-
-    return (latent_vectors, labels)
 
 
 def main(args):
@@ -44,14 +19,18 @@ def main(args):
 
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
 
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    dataloader = DataLoader(
+        dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
+    )
 
     VAE_trained = train(
         dataloader, device, latent_dim=args.latent_dim, vae_type=args.vae_type
     )
 
     print("Extracting latents...")
-    latents, labels = extract_latents(VAE_trained, dataloader, device)
+    latents, labels = extract_latents(
+        VAE_trained, dataloader, device, vae_type=args.vae_type
+    )
 
     print("Classifying latents with SVMs...")
     svm.classify(latents, labels, args.results_path)
@@ -102,4 +81,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
-gi

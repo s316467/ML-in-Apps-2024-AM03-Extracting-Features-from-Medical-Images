@@ -2,7 +2,7 @@ root_dir=${1}
 num_images=${2:-24}
 batch_size=${3:-8}
 latent_dim=${4:-100}
-num_epochs=${5:-50}
+num_epochs=${5:-35}
 vae_type=${6:-vae}
 
 # Set PYTHONPATH to include the project root
