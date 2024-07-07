@@ -42,3 +42,30 @@ def plot_tsne(features, labels, title, filename):
     plt.savefig(filename)
     plt.close()
 
+
+def plot_losses(total_loss, mse, kld, beta):
+    import matplotlib.pyplot as plt
+
+    fig, axs = plt.subplots(3, 1, figsize=(8, 12))
+
+    axs[0].plot(total_loss, label="Total Loss", color="blue")
+    axs[0].set_title("Total Loss")
+    axs[0].set_xlabel("steps")
+    axs[0].set_ylabel("Loss")
+    axs[0].legend()
+
+    axs[1].plot(mse, label="MSE", color="green")
+    axs[1].set_title("MSE")
+    axs[1].set_xlabel("steps")
+    axs[1].set_ylabel("Loss")
+    axs[1].legend()
+
+    axs[2].plot(kld, label="KLD", color="red")
+    axs[2].set_title("kld")
+    axs[2].set_xlabel("steps")
+    axs[2].set_ylabel("Loss")
+    axs[2].legend()
+
+    plt.tight_layout()
+    plt.savefig(f"losses_vae_beta={beta}.png")
+    # plt.show()

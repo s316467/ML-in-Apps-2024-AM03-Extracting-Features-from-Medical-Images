@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
+from utils.plotting import plot_losses
 from res_vae import ResVAE
 from vae import VAE
 
