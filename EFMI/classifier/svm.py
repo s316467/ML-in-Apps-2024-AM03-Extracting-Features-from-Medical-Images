@@ -6,8 +6,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 from utils.plotting import * 
 
-from utils.plotting import plot_pca_variance
-
 
 def apply_pca(train_set, test_set, n_components=128):
     pca = PCA(n_components=n_components)
@@ -32,6 +30,7 @@ def classify(
 
     # Initialize and train the SVM classifier
     svm_classifier = SVC(kernel="linear", C=1.0)
+    print("Fitting svm...")
     svm_classifier.fit(X_train, y_train)
 
     # Predict on the test set
@@ -53,6 +52,6 @@ def classify(
     plot_tsne(
         X_test,
         y_pred,
-        title="t-SNE plot of SVM predictions",
-        filename="tsne_plot.png",
+        title=f"{experiment_name} t-SNE plot of SVM predictions",
+        filename=f"{experiment_name}_tsne_plot.png",
     )

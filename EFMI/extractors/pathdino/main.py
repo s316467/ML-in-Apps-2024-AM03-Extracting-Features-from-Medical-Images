@@ -1,18 +1,13 @@
 import argparse
-from time import strftime
-import torch
+from train import fine_tune
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from sklearn.decomposition import PCA
 from extractor import extract_features
 import classifier.svm as svm
 from utils.plotting import *
 from dataset.PatchedDataset import PatchedDataset
 from model.PathDino import get_pathDino_model
-import torch.nn as nn
-import torch.optim as optim
-from torch.cuda.amp import GradScaler, autocast
-from torch.utils.data import random_split
+
 
 custom_transform = transforms.Compose(
     [
@@ -28,73 +23,36 @@ custom_transform = transforms.Compose(
 )
 
 
-def fine_tune(model, dataset, batch_size, num_epochs):
-    criterion = nn.CrossEntropyLoss()  # ????
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    scaler = GradScaler()  # Mixed precision training scaler
-
-    train_size = int(0.8 * len(dataset))
-    test_size = len(dataset) - train_size
-    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    model = model.cuda()
-
-    for param in model.parameters():
-        param.requires_grad = True
-
-    model.train()
-    training_losses = []
-    for epoch in range(num_epochs):
-        running_loss = 0.0
-        for inputs, labels, p_id, coords in train_loader:
-            inputs, labels = inputs.cuda(non_blocking=True), labels.cuda(
-                non_blocking=True
-            )
-            optimizer.zero_grad()
-            with autocast():
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-            if torch.isnan(loss):
-                print(f"NaN loss encountered at epoch {epoch+1}")
-                continue
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            running_loss += loss.item()
-        epoch_loss = running_loss / len(train_loader)
-        training_losses.append(epoch_loss)
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss}")
-
-    # Plot and save the training loss
-    plot_training_loss(training_losses, ".")
-
-    return model
-
-
 def main(args):
 
     pathdino, dino_transform = get_pathDino_model(
         weights_path=args.pretrained_dino_path
     )
+    
+    pathdino.cuda()
 
-    # choose transform (Custom vs Dino) ?
+    #TODO: choose transform (Custom vs Dino) ?
     dataset = PatchedDataset(
         root_dir=args.root_dir, num_images=args.num_images, transform=custom_transform
     )
 
     dataloader = DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
+        dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
 
+    #TODO: without train_test_split ?
     if args.fine_tune:
-        pathdino = fine_tune(pathdino, dataset, args.batch_size, args.fine_tune_epochs)
+        pathdino = fine_tune(pathdino, dataloader, args.fine_tune_epochs)
 
     features, labels = extract_features(dataloader, pathdino)
 
+    #TODO: choose different dim.red layer?
     svm.classify(
-        features, labels, args.results_path, with_pca=True, pca_components=args.latent_dim
+        features,
+        labels,
+        args.results_path,
+        with_pca=True,
+        pca_components=args.latent_dim,
     )
 
 
