@@ -2,7 +2,6 @@ import torch
 import numpy as np
 
 
-# extract latent vectors for the entire dataset
 def extract_latent_vectors(model, dataloader, device):
     latent_vectors = []
     labels = []

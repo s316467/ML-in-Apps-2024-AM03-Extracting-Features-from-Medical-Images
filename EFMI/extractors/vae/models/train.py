@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 from utils.plotting import plot_losses
-from res_vae import ResVAE
-from vae import VAE
+from models.res_vae import ResVAE
+from models.vae import VAE
 
 
 # Reconstruction + KL divergence losses summed over all elements and batch
@@ -20,10 +20,14 @@ def train(dataloader, latent_dim, num_epochs, vae_type):
 
     if vae_type == "vae":
         model = VAE(latent_dim).to(device)
-        train_vae(model, dataloader, device, num_epochs, vae_type)
+        model = train_vae(model, dataloader, device, num_epochs, vae_type)
     if vae_type == "resvae":
         model = ResVAE(latent_dim).to(device)
-        train_resvae(model, dataloader, device, latent_dim, num_epochs, vae_type)
+        model = train_resvae(
+            model, dataloader, device, latent_dim, num_epochs, vae_type
+        )
+
+    return model
 
 
 def train_vae(model, dataloader, device, num_epochs, vae_type):
@@ -60,9 +64,8 @@ def train_vae(model, dataloader, device, num_epochs, vae_type):
     torch.save(model.state_dict(), f"{vae_type}_100.pth")
     return model
 
-    # define a weighted funtion for beta
 
-
+# define a weighted funtion for beta
 def weight_beta(num_epochs, beta):
     if beta == 1:
         x = np.linspace(-6, 6, num_epochs)
@@ -150,3 +153,4 @@ def train_resvae(model, dataloader, device, num_epochs, vae_type):
         },
         f"{vae_type}_MSE_{num_epochs}_beta={beta}_lr={learning_rate}.pth",
     )
+    return model
