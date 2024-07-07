@@ -24,7 +24,11 @@ def main(args):
     )
 
     VAE_trained = train(
-        dataloader, device, latent_dim=args.latent_dim, vae_type=args.vae_type
+        dataloader,
+        device,
+        latent_dim=args.latent_dim,
+        num_epochs=args.num_epochs,
+        vae_type=args.vae_type,
     )
 
     print("Extracting latents...")

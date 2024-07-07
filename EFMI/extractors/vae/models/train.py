@@ -6,6 +6,7 @@ from tqdm import tqdm
 from utils.plotting import plot_losses
 from models.res_vae import ResVAE
 from models.vae import VAE
+from torchvision import transforms
 
 
 # Reconstruction + KL divergence losses summed over all elements and batch
@@ -15,17 +16,16 @@ def loss_function(recon_x, x, mu, logvar):
     return BCE + KLD
 
 
-def train(dataloader, latent_dim, num_epochs, vae_type):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+def train(dataloader, device, latent_dim, num_epochs, vae_type):
     if vae_type == "vae":
         model = VAE(latent_dim).to(device)
         model = train_vae(model, dataloader, device, num_epochs, vae_type)
     if vae_type == "resvae":
         model = ResVAE(latent_dim).to(device)
-        model = train_resvae(
-            model, dataloader, device, latent_dim, num_epochs, vae_type
+        dataloader.transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Resize((256, 256))]
         )
+        model = train_resvae(model, dataloader, device, num_epochs, vae_type)
 
     return model
 
@@ -61,7 +61,7 @@ def train_vae(model, dataloader, device, num_epochs, vae_type):
             torch.save(model.state_dict(), f"{vae_type}_{epoch+current_epochs+1}.pth")
 
     # Save the trained model
-    torch.save(model.state_dict(), f"{vae_type}_100.pth")
+    torch.save(model.state_dict(), f"{vae_type}_{num_epochs}.pth")
     return model
 
 
