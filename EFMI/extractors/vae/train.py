@@ -22,7 +22,7 @@ def train(dataloader, device, latent_dim, num_epochs, vae_type):
         model = train_vae(model, dataloader, device, num_epochs, vae_type)
     if vae_type == "resvae":
         model = ResVAE(latent_dim).to(device)
-        dataloader.transform = transforms.Compose(
+        dataloader.dataset.transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Resize((256, 256))]
         )
         model = train_resvae(model, dataloader, device, num_epochs, vae_type)

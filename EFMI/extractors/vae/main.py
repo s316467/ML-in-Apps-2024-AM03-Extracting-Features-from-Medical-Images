@@ -3,7 +3,7 @@ import torch
 from extractor import extract_latents
 from dataset.PatchedDataset import PatchedDataset
 from torch.utils.data import DataLoader
-from models.train import train
+from EFMI.extractors.vae.train import train
 import classifier.svm as svm
 
 

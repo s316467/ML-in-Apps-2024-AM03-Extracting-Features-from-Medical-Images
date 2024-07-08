@@ -14,7 +14,7 @@ class PatchedDataset(Dataset):
         not_roi_path="not_roi_patches",
         in_roi_path="in_roi_patches",
         num_images=24,
-        transform=None,
+        transform=transforms.Compose([transforms.ToTensor()]),
     ):
         self.root_dir = root_dir
         self.not_roi_path = not_roi_path
@@ -78,10 +78,6 @@ class PatchedDataset(Dataset):
         patient_id = self.patients[idx]
         coordinates = self.coordinates[idx]
 
-        if self.transform:
-            image = self.transform(image)
-        else:
-            transform = transforms.Compose([transforms.ToTensor()])
-            image = transform(image)
+        image = self.transform(image)
 
         return image, label, patient_id, coordinates
