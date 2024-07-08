@@ -1,6 +1,25 @@
 # Extracting features from medical images
 Authors: Maria Scoleri, Antonio Ferrigno, Fabio Barbieri, Vittorio di Giorgio 
 
+# Project structure
+
+In the following, you can find a brief description of the project files.
+
+| File | Description | 
+| ---- | ----------- |
+| `launch_scripts/.*.sh` | contains the experiments run scripts |
+| `results/.*` | contains experiments classification reports and plots |
+| `dataset/PatchedDataset.py` | contains the custom Dataset class |
+| `dataset/patches.py` | contains the code to extract patches from WSIs |
+| `classifier/svm.py` | contains the svm classifier with which to test the extracted features on the main classification task (cancer presence) |
+| `extractors/.*` | each subfolder contains the code to extract feature using a particular method |
+| `extractors/baseline/.*` | contains the code to extract features from patches using imagenet pretrained baselines (resnet50, densenet121) |
+| `extractors/baseline/features` | contains np arrays of baseline extracted features and labels |
+| `extractors/pathdino/.*` |  contains the code to extract features from patches using pathdino (pretrained or finetuned) |
+| `extractors/vae/.*` |  contains the code to extract features from patches using a custom VAE |
+
+
+
 
 ## Prerequisites
 Install OpenSlide tools:
