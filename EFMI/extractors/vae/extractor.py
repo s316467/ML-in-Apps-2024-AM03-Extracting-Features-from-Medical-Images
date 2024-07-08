@@ -17,10 +17,10 @@ def extract_latent_vectors(model, dataloader, device):
     return np.concatenate(latent_vectors), np.concatenate(labels)
 
 
-def extract_latents(model, dataloader, device, vae_type):
+def extract_latents(model, dataloader, device, result_path):
     latent_vectors, labels = extract_latent_vectors(model, dataloader, device)
 
-    np.save(f"{vae_type}_latents.npy", latent_vectors)
-    np.save(f"{vae_type}_labels.npy", labels)
+    np.save(f"{result_path}_latents.npy", latent_vectors)
+    np.save(f"{result_path}_labels.npy", labels)
 
     return (latent_vectors, labels)

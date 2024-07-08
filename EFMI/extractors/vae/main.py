@@ -14,7 +14,7 @@ def main(args):
     - Classify latens with SVM
     """
 
-    print("Training the VAE...")
+    print(f"Training VAE {args.vae_type}...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
@@ -33,7 +33,7 @@ def main(args):
 
     print("Extracting latents...")
     latents, labels = extract_latents(
-        VAE_trained, dataloader, device, vae_type=args.vae_type
+        VAE_trained, dataloader, device, args.results_path
     )
 
     print("Classifying latents with SVMs...")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_epochs",
         type=int,
-        default=50,
+        default=30,
     )
     parser.add_argument(
         "--vae_type",

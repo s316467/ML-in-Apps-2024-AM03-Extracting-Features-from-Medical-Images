@@ -48,10 +48,10 @@ To test one of the baseline latents with an svm classifier. Run ```EFMI/launch_s
 
 # Feature extractors
 ## VAE
-To test the custom VAE latents with the svm classifier, simply run ```EFMI/launch_scripts/test-vae.sh root_dir num_images batch_size latent_dim```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the VAE, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size with which to train the VAE (defaults to 16), ```latent_dim``` specifies the extract latents dimension (defaults to 100).
+To test the custom VAE latents with the svm classifier, simply run ```EFMI/launch_scripts/test-vae.sh root_dir num_images batch_size latent_dim num_epochs vae_type```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the VAE, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size with which to train the VAE (defaults to 16), ```latent_dim``` specifies the extract latents dimension (defaults to 100). Use ```vae_type``` to specify which flavor of VAE to use (availables: vae, resvae).
 
 ## PathDINO
-...
+To test PathDino latents with the svm classifier, simply run ```EFMI/launch_scripts/test-pathdino.sh root_dir num_images batch_size latent_dim fine_tune num_epochs```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the model, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size (defaults to 16), ```latent_dim``` specifies the extract latents dimension (defaults to 100). If you want to finetune the model, specify ```finetune``` running the script, otherwise it will default to ```pretrained```.  
 
 ## BYOL
-..
+...

@@ -17,15 +17,17 @@ def loss_function(recon_x, x, mu, logvar):
 
 
 def train(dataloader, device, latent_dim, num_epochs, vae_type):
+
     if vae_type == "vae":
-        model = VAE(latent_dim).to(device)
-        model = train_vae(model, dataloader, device, num_epochs, vae_type)
+        model = train_vae(VAE(latent_dim), dataloader, device, num_epochs, vae_type)
+
     if vae_type == "resvae":
-        model = ResVAE(latent_dim).to(device)
         dataloader.dataset.transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Resize((256, 256))]
         )
-        model = train_resvae(model, dataloader, device, num_epochs, vae_type)
+        model = train_resvae(
+            ResVAE(latent_dim), dataloader, device, num_epochs, vae_type
+        )
 
     return model
 
@@ -40,6 +42,7 @@ def train_vae(model, dataloader, device, num_epochs, vae_type):
     except:
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
+    model.to(device)
     # Training loop
     for epoch in range(num_epochs):
         model.train()
@@ -106,6 +109,7 @@ def train_resvae(model, dataloader, device, num_epochs, vae_type):
     mse_history = []
     kld_history = []
 
+    model.to(device)
     # Training loop
     for epoch in range(start_epoch, num_epochs):
         model.train()

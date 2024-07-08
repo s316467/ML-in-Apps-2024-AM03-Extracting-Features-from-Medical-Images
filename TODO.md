@@ -4,7 +4,8 @@
 
 
 - refactor extract feature function
-- Extract device, results_path into a global
+- Extract device into a global
+- refactor results_path
 - fix verbose args
 - unpack args in main call: main(arg1, arg2) instead of main(args)
 
