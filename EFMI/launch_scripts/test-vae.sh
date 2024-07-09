@@ -8,7 +8,7 @@ vae_type=${6:-vae}
 # Set PYTHONPATH to include the project root
 export PYTHONPATH=$(pwd)
 
-results_path="${vae_type}_bs${batch_size}_numimages${num_images}_latentdim${latent_dim}"
+results_path="results/vae/${vae_type}_bs${batch_size}_numimages${num_images}_latentdim${latent_dim}"
 
 
 python ./extractors/vae/main.py \
