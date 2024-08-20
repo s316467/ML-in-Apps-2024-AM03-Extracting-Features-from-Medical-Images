@@ -18,7 +18,6 @@ from byol_pytorch import BYOL
 import pytorch_lightning as pl
 from dataset.patches_dataset import PatchedDatasetAugmented, train_test_split_dataset
 from byol_pytorch.trainer import BYOLTrainer
-from byol_pytorch.trainer import MockDataset
 # test model, a resnet 50x
 
 resnet = models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
