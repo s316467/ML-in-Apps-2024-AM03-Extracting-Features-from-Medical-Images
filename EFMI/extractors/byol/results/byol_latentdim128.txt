@@ -1,0 +1,31 @@
+Loading embeddings...
+Embeddings loaded
+Accuracy on training set: 0.9203679369250986
+Classification Report on training set:
+              precision    recall  f1-score   support
+
+           0       0.93      0.92      0.92      5914
+           1       0.91      0.92      0.92      5501
+
+    accuracy                           0.92     11415
+   macro avg       0.92      0.92      0.92     11415
+weighted avg       0.92      0.92      0.92     11415
+
+Confusion Matrix on training set:
+[[5424  490]
+ [ 419 5082]]
+
+Accuracy on test set: 0.834968465311843
+Classification Report on test set:
+              precision    recall  f1-score   support
+
+           0       0.84      0.84      0.84      1475
+           1       0.83      0.83      0.83      1379
+
+    accuracy                           0.83      2854
+   macro avg       0.83      0.83      0.83      2854
+weighted avg       0.83      0.83      0.83      2854
+
+Confusion Matrix on test set:
+[[1240  235]
+ [ 236 1143]]

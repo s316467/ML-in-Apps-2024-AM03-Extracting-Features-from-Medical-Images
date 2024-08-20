@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from utils.plotting import plot_tsne
 
 print("Loading embeddings...")
 embeddings_with_labels = torch.load('./embeddings/eval_embeddings.pt', map_location=torch.device('cpu'))
@@ -21,6 +22,10 @@ labels = np.concatenate(labels, axis=0)
 
 print("Features shape:", features.shape)
 print("Labels shape:", labels.shape)
+
+plot_tsne(features, labels, "t-SNE of embeddings", "results/tsne_embeddings.png")
+
+
 
 
 
@@ -48,3 +53,6 @@ print("Classification Report on test set:")
 print(classification_report(y_test, y_pred_test))
 print("Confusion Matrix on test set:")
 print(confusion_matrix(y_test, y_pred_test))
+
+
+#create tsne
