@@ -22,3 +22,4 @@ CRC_WSIs_no_train_test
 PNGs
 temp_images
 checkpoint*.pth
+*.pt

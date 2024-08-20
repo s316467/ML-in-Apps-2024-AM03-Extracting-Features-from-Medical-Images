@@ -4,15 +4,24 @@ from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-embeddings_with_labels = torch.load('./embeddings/eval_embeddings.pt', map_location=torch.device('cpu')) # Spostiamo i tensori sulla CPU
+print("Loading embeddings...")
+embeddings_with_labels = torch.load('./embeddings/eval_embeddings.pt', map_location=torch.device('cpu'))
+print("Embeddings loaded")
 features = [embedding.cpu().numpy() for embedding, _ in embeddings_with_labels]
 labels = [label.cpu().numpy() for _, label in embeddings_with_labels]
+
+
+
 
 # Appiattisci i batch di features in un unico array
 features = np.concatenate(features, axis=0)
 
-# Appiattisci i batch di etichette in un unico array
+# Appiattisci i batch di etichette in  un unico array
 labels = np.concatenate(labels, axis=0)
+
+print("Features shape:", features.shape)
+print("Labels shape:", labels.shape)
+
 
 
 # Dividi i dati in set di addestramento e set di test

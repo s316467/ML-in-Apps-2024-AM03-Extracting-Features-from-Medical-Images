@@ -94,7 +94,6 @@ class PatchedDatasetAugmented(Dataset):
         coordinates = self.coordinates[idx]
         image = self.transform(image)
         if self.eval:
-            print("Returning image and label")
             return image, label
         return image  
 
