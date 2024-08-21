@@ -8,13 +8,9 @@ from utils.plotting import *
 
 def fine_tune(model, dataloader, num_epochs):
     current_epochs = 0
-    
-    try:
-      model.load_state_dict(torch.load(f"pathdino_{current_epochs}.pth"))
-      print("Model loaded correctly!")
-    except:
-      optimizer = optim.Adam(model.parameters(), lr=0.001)
-      scaler = GradScaler()  # Mixed precision training scaler
+
+    optimizer = optim.Adam(model.parameters(), lr=0.0005)
+    scaler = GradScaler()  # Mixed precision training scaler
 
     criterion = nn.CrossEntropyLoss()
     model = model.cuda()
@@ -38,8 +34,8 @@ def fine_tune(model, dataloader, num_epochs):
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
                 if torch.isnan(loss):
-                  print(f"NaN loss encountered at epoch {epoch+1}")
-                  continue
+                    print(f"NaN loss encountered at epoch {epoch+1}")
+                    continue
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
@@ -51,8 +47,11 @@ def fine_tune(model, dataloader, num_epochs):
             torch.save(model.state_dict(), f"pathdino_{epoch+current_epochs+1}.pth")
 
     # Save the trained model
-    torch.save(model.state_dict(), f"pathdino_{num_epochs}.pth")    
+    torch.save(
+        model.state_dict(),
+        f"./results/pathdino/finetune/pathdino_{num_epochs}epochs.pth",
+    )
     # Plot and save the training loss
-    plot_training_loss(training_losses, ".")
+    plot_training_loss(training_losses, "./results/pathdino/finetune/")
 
     return model

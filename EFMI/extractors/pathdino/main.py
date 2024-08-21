@@ -1,6 +1,5 @@
 import argparse
 from train import fine_tune
-from torchvision import transforms
 from torch.utils.data import DataLoader
 from extractor import extract_features
 import classifier.svm as svm
@@ -9,44 +8,30 @@ from dataset.PatchedDataset import PatchedDataset
 from model.PathDino import get_pathDino_model
 
 
-custom_transform = transforms.Compose(
-    [
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Lambda(
-            lambda x: x.repeat(3, 1, 1) if x.shape[0] == 1 else x
-        ),  # ensure 3 channels
-        transforms.Normalize(
-            mean=[0.7598, 0.6070, 0.7159], std=[0.1377, 0.1774, 0.1328]
-        ),
-    ]
-)
-
-
 def main(args):
 
     pathdino, dino_transform = get_pathDino_model(
         weights_path=args.pretrained_dino_path
     )
-    
+
     pathdino.cuda()
 
-    #TODO: choose transform (Custom vs Dino) ?
     dataset = PatchedDataset(
-        root_dir=args.root_dir, num_images=args.num_images, transform=custom_transform
+        root_dir=args.root_dir, num_images=args.num_images, transform=dino_transform
     )
 
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
 
-    #TODO: without train_test_split ?
     if args.fine_tune:
+        print(f"Finetuning pathdino512 from {args.pretrained_dino_path}")
         pathdino = fine_tune(pathdino, dataloader, args.fine_tune_epochs)
 
     features, labels = extract_features(dataloader, pathdino)
 
-    #TODO: choose different dim.red layer?
+    # TODO: choose different dim.red layer?
+    # TODO: Pass train and test instead
     svm.classify(
         features,
         labels,
@@ -82,7 +67,10 @@ if __name__ == "__main__":
         help="Extracted latent vector dimension, defaults to 128",
     )
     parser.add_argument(
-        "--pretrained_dino_path", type=str, help="PathDino pretrained weights path"
+        "--pretrained_dino_path", 
+        type=str,
+        default="./extractors/pathdino/model/PathDino512.py" ,
+        help="PathDino pretrained weights path"
     )
     parser.add_argument(
         "--fine_tune",
@@ -99,6 +87,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--results_path",
         type=str,
+        default="./results/pathdino/",
         help="Name of the experiment, save results in this path.",
     )
     args = parser.parse_args()
