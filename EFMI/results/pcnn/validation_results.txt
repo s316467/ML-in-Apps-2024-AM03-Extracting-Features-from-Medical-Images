@@ -1,12 +1,12 @@
-Validation Accuracy: 0.7109798129000492
+Validation Accuracy: 0.6809453471196455
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.86      0.48      0.61       972
-           1       0.66      0.93      0.77      1059
+           0       0.85      0.40      0.55       972
+           1       0.63      0.94      0.75      1059
 
-    accuracy                           0.71      2031
-   macro avg       0.76      0.70      0.69      2031
-weighted avg       0.75      0.71      0.69      2031
+    accuracy                           0.68      2031
+   macro avg       0.74      0.67      0.65      2031
+weighted avg       0.74      0.68      0.65      2031
 
 t-SNE plot saved to: results\pcnn\tsne_plot.png

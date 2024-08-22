@@ -2,11 +2,11 @@
 
 # Variabile che riceve il percorso della cartella DATA
 data_dir=${1}
-batch_size=${2:-16}
-workers=${3:-4}
+batch_size=${2:-32}
+workers=${3:-16}
 prefix=${4:-multigpu_b192}
 ckptdirprefix=${5:-"./results/pcnn/"}
-epochs=${6:-10}
+epochs=${6:-30}
 resume=${7:-""}
 save_model=${8:-"./results/pcnn/"}
 arch=${9:-pdresnet50}
