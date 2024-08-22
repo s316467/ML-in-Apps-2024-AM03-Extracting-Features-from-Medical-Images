@@ -44,7 +44,10 @@ def fine_tune(model, dataloader, num_epochs):
         training_losses.append(epoch_loss)
         print(f"Epoch {epoch+current_epochs+1}/{num_epochs}, Loss: {epoch_loss}")
         if (epoch + 1) % 2 == 0 and epoch > 0:
-            torch.save(model.state_dict(), f"pathdino_{epoch+current_epochs+1}.pth")
+            torch.save(
+                model.state_dict(),
+                f"./results/pathdino/finetune/pathdino_{epoch+current_epochs+1}.pth",
+            )
 
     # Save the trained model
     torch.save(
