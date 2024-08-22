@@ -52,6 +52,10 @@ def fine_tune(model, dataloader, num_epochs):
         f"./results/pathdino/finetune/pathdino_{num_epochs}epochs.pth",
     )
     # Plot and save the training loss
-    plot_training_loss(training_losses, "./results/pathdino/finetune/")
+    plot_training_loss(
+        training_losses,
+        "./results/pathdino/finetune/",
+        f"pathdino_{num_epochs}_trainingloss.png",
+    )
 
     return model

@@ -100,10 +100,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     args.fine_tune = True if args.fine_tune_epochs > 0 else False
+
     if args.fine_tune:
-        args.results_path = (
-            f"{args.results_path}/finetune/pathdino_finetuned{args.fine_tune_epochs}"
-        )
-    args.results_path = f"{args.results_path}/pathdino_bs{args.batch_size}_ni{args.num_images}_latent{args.latent_dim}"
+        args.results_path = f"{args.results_path}/finetune/pathdino_finetuned_{args.fine_tune_epochs}_bs{args.batch_size}_numimages{args.num_images}_latent{args.latent_dim}"
+    else:
+        args.results_path = f"{args.results_path}/pathdino_bs{args.batch_size}_numimages{args.num_images}_latent{args.latent_dim}"
     print(args)
     main(args)
