@@ -364,7 +364,7 @@ def get_pathDino_model(weights_path="./extractors/pathdino/model/PathDino512.pth
     state_dict = {k.replace("backbone.", ""): v for k, v in state_dict.items()}
     # model.load_state_dict(state_dict, strict=False)
     model.load_state_dict(state_dict)
-    print("Pathdino Weights loaded")
+    print(f"Pathdino Weights loaded from {weights_path}")
 
     data_transforms_PathDino = transforms.Compose(
         [
