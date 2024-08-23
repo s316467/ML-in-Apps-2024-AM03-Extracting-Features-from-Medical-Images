@@ -95,13 +95,42 @@ def scale_coords(coords, downsampling_factor):
     return [(x / downsampling_factor, y / downsampling_factor) for x, y in coords]
 
 
-def get_patch_roi(self, x, y, roi_coords):
+
+def get_patch_roi(x, y, roi_coords, patch_size = 512):
+    patch_corners = [
+        (x, y),
+        (x + patch_size - 1, y),
+        (x, y + patch_size - 1),
+        (x + patch_size - 1, y + patch_size - 1)
+    ]
+    
+    def point_inside_polygon(x, y, polygon):
+        n = len(polygon)
+        inside = False
+        p1x, p1y = polygon[0]
+        for i in range(n + 1):
+            p2x, p2y = polygon[i % n]
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        return inside
+
+    fully_inside_roi = all(point_inside_polygon(corner[0], corner[1], roi_coords) for corner in patch_corners)
+    
+    if fully_inside_roi:
+        return [(1, 1)]  # Special coordinate to indicate fully inside
+    
     patch_roi = []
     for rx, ry in roi_coords:
-        if x <= rx < x + self.patch_size and y <= ry < y + self.patch_size:
+        if x <= rx < x + patch_size and y <= ry < y + patch_size:
             patch_roi.append((rx - x, ry - y))
+    
     return patch_roi
-
 
 # Function to extract patches from the WSI
 # TODO: Let this returns (patch, label), handle saving outside of this
@@ -125,12 +154,15 @@ def extract_patches(image_path, patches_path, roi_coords, patch_size=512, mag_le
             )
 
             if is_not_white_or_gray(np.array(patch)):
+                if not os.path.exists(patches_path):
+                    os.makedirs(patches_path)
+
                 patch_roi = np.array(get_patch_roi(x, y, roi_coords))
 
                 # print(f"print_patch({patch_vertices[0][0]}, {patch_vertices[0][1]})")
                 patch_name = f"{x}_{y}_mag{mag_level}"
                 patch.save(f"{patches_path}/{patch_name}.png")
-                patch_roi.save(f"{patches_path}/{patch_name}.npy")
+                np.save(f"{patches_path}/{patch_name}.npy", patch_roi)
 
 
 def get_images_and_roi_file_names(ds_path):
@@ -195,4 +227,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    extract_all(args.ds_path, args.oatches_path)
+    extract_all(args.ds_path, args.patches_path)

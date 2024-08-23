@@ -38,7 +38,7 @@ def train_test_split_loaders(full_dataset, train_ratio):
 
 def main(args):
 
-    dataset = ROIPatchDataset(args.root_dir, wsi_paths, xml_paths)
+    dataset = ROIPatchDataset(args.patches_path, num_images=args.num_images)
 
     train_loader, test_loader = train_test_split_loaders(dataset, 0.8)
 
@@ -63,28 +63,35 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract patches from WSI images.")
     parser.add_argument(
-        "--ds_path", type=str, required=True, help="Path to the dataset directory"
+        "--patches_path", type=str, required=True, help="Path to the dataset directory"
     )
     parser.add_argument(
-        "--wsi_paths",
+        "--num_images",
+        type=int,
+        default=24,
+        help="How may images to use (test purpose)",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=16,
+    )
+    parser.add_argument(
+        "--model_name",
         type=str,
-        required=True,
-        help="Path to save patches outside ROI",
+        default="resnet50",
+        help="Which pretrained baseline model to use as baseline feature extractor, defaults to resnet50. Availables: resnet50, densenet121",
     )
     parser.add_argument(
-        "--xml_paths", type=str, required=True, help="Path to save patches inside ROI"
-    )
-    parser.add_argument(
-        "--patch_size",
+        "--latent_dim",
         type=int,
-        default=512,
-        help="Size of the patches to extract, defaults to 512",
+        default=128,
+        help="Extracted latent vector dimension, defaults to 128",
     )
     parser.add_argument(
-        "--mag_level",
-        type=int,
-        default=1,
-        help="Magnification level to use, defaults to 1",
+        "--results_path",
+        type=str,
+        help="Name of the experiment, save results in this path.",
     )
 
     args = parser.parse_args()
