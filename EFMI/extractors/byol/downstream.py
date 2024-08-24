@@ -4,33 +4,41 @@ from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from utils.plotting import plot_tsne
-
-print("Loading embeddings...")
-embeddings_with_labels = torch.load('./embeddings/eval_embeddings.pt', map_location=torch.device('cpu'))
-print("Embeddings loaded")
-features = [embedding.cpu().numpy() for embedding, _ in embeddings_with_labels]
-labels = [label.cpu().numpy() for _, label in embeddings_with_labels]
+import pickle
 
 
+def load_features(file_path):
+    with open(file_path, 'rb') as f:
+        train_X, train_y, test_X, test_y = pickle.load(f)
+    print(f"Features loaded from {file_path}")
+    return train_X, train_y, test_X, test_y
 
 
-# Appiattisci i batch di features in un unico array
-features = np.concatenate(features, axis=0)
 
-# Appiattisci i batch di etichette in  un unico array
-labels = np.concatenate(labels, axis=0)
 
-print("Features shape:", features.shape)
-print("Labels shape:", labels.shape)
 
-plot_tsne(features, labels, "t-SNE of embeddings", "results/tsne_embeddings.png")
+
+
+
+
 
 
 
 
 
 # Dividi i dati in set di addestramento e set di test
-X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
+X_train, y_train, X_test, y_test= load_features("embeddings/features.pt")
+print(X_train.shape)
+print(y_train.shape)
+print(X_test.shape)
+print(y_test.shape)
+
+plot_tsne(X_train, y_train, "tsne_train_128_latent", "tsne_train_128.png")
+plot_tsne(X_test, y_test, "tsne_test.png", "tsne_test_128.png")
+
+
+
+
 
 # Addestra un classificatore SVM utilizzando le features estratte
 svm_classifier = SVC(kernel='linear')
@@ -56,3 +64,5 @@ print(confusion_matrix(y_test, y_pred_test))
 
 
 #create tsne
+
+

@@ -190,6 +190,8 @@ class BYOL(nn.Module):
     ):
         super().__init__()
         self.net = net
+        self.image_size = image_size    
+        self.hidden_layer = hidden_layer    
 
         # default SimCLR augmentation
 

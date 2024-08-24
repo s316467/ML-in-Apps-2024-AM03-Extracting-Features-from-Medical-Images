@@ -1,0 +1,33 @@
+Features loaded from embeddings/features.pt
+Dimension train set: (11072, 128)
+Dimension test set: (2752, 128)
+
+Accuracy on training set: 0.8698518786127167
+Classification Report on training set:
+              precision    recall  f1-score   support
+
+           0       0.87      0.87      0.87      5581
+           1       0.87      0.87      0.87      5491
+
+    accuracy                           0.87     11072
+   macro avg       0.87      0.87      0.87     11072
+weighted avg       0.87      0.87      0.87     11072
+
+Confusion Matrix on training set:
+[[4839  742]
+ [ 699 4792]]
+
+Accuracy on test set: 0.8710029069767442
+Classification Report on test set:
+              precision    recall  f1-score   support
+
+           0       0.87      0.88      0.87      1388
+           1       0.88      0.86      0.87      1364
+
+    accuracy                           0.87      2752
+   macro avg       0.87      0.87      0.87      2752
+weighted avg       0.87      0.87      0.87      2752
+
+Confusion Matrix on test set:
+[[1224  164]
+ [ 191 1173]]
