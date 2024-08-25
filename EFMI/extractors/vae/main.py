@@ -40,7 +40,7 @@ def main(args):
         print("Loading trained VAE...")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         VAE_trained = res_vae.ResVAE(args.latent_dim).to(device)
-        VAE_trained.load_state_dict(torch.load(f'trained_models/ResVAE.pth')['model_state_dict']) 
+        VAE_trained.load_state_dict(torch.load(args.model_path)['model_state_dict']) 
     else:
         print("Starting VAE training...")
         VAE_trained = train(
