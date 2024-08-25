@@ -173,6 +173,3 @@ if __name__ == "__main__":
     print("Shape of train_y: ", train_y.shape)
 
     
-
-
-

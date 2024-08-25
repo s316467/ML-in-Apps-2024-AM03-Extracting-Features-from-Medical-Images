@@ -1,6 +1,5 @@
 *.zip
 *.tar
-*.pth
 */training_runs
 __pycache__/
 *.py[cod]
@@ -17,6 +16,7 @@ venv.bak/
 .idea/
 .DS_Store
 **/DATA/
+**/DATA_original/
 /old_notebooks/features-extractors/masking/partialconv/checkpoints
 CRC_WSIs_no_train_test
 PNGs

@@ -14,18 +14,6 @@ def load_features(file_path):
     return train_X, train_y, test_X, test_y
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 # Dividi i dati in set di addestramento e set di test
 X_train, y_train, X_test, y_test= load_features("embeddings/features.pt")
 print(X_train.shape)
@@ -35,9 +23,6 @@ print(y_test.shape)
 
 plot_tsne(X_train, y_train, "tsne_train_128_latent", "tsne_train_128.png")
 plot_tsne(X_test, y_test, "tsne_test.png", "tsne_test_128.png")
-
-
-
 
 
 # Addestra un classificatore SVM utilizzando le features estratte

@@ -5,7 +5,7 @@ from sklearn.manifold import TSNE
 
 
 # Function to plot loss during training
-def plot_training_loss(losses, output_dir):
+def plot_training_loss(losses, output_dir, file_name):
     plt.figure()
     plt.plot(losses, label="Training Loss")
     plt.xlabel("Epoch")
@@ -13,7 +13,7 @@ def plot_training_loss(losses, output_dir):
     plt.title("Training Loss Over Epochs")
     plt.legend()
     plt.grid()
-    plt.savefig(os.path.join(output_dir, "training_loss.png"))
+    plt.savefig(os.path.join(output_dir, file_name))
     plt.close()
 
 

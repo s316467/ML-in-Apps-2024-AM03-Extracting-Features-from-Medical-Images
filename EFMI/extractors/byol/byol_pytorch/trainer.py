@@ -211,6 +211,3 @@ class BYOLTrainer(Module):
         self.plot_losses()
 
         self.print('Training complete')
-
-
-

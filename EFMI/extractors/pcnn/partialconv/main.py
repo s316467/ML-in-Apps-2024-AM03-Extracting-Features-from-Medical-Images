@@ -29,6 +29,7 @@ from sklearn.linear_model import SGDClassifier
 
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+import classifier.svm as svm
 
 def save_generated_images(images, epoch, batch_idx, output_dir='generated_images'):
     """
@@ -69,7 +70,7 @@ class RandomHole:
 
         return img
 
-def generate_tsne(embeddings, labels, output_file='tsne_plot.png'):
+def generate_tsne(embeddings, labels, output_file):
     # Reduce dimensions with PCA if embeddings have more than 50 features
     if embeddings.shape[1] > 50:
         pca = PCA(n_components=50)
@@ -84,8 +85,11 @@ def generate_tsne(embeddings, labels, output_file='tsne_plot.png'):
     scatter = plt.scatter(tsne_results[:, 0], tsne_results[:, 1], c=labels, cmap='viridis', s=5)
     plt.colorbar(scatter)
     plt.title('t-SNE of PCA-reduced features')
+    
+    # Save the figure
     plt.savefig(output_file)
-    plt.show()
+    plt.close()  # Close the plot to ensure everything is rendered and saved
+    print(f'Saved t-SNE plot to {output_file}')
 
 
 model_baseline_names = sorted(name for name in models_baseline.__dict__
@@ -379,16 +383,33 @@ def extract_and_save_embeddings(train_loader, val_loader, model, args):
         clf.partial_fit(train_embeddings[i:end], train_labels[i:end], classes=np.unique(train_labels))
     
     # Save the classifier
-    joblib.dump(clf, 'svm_classifier.pkl')
+    # joblib.dump(clf, 'svm_classifier.pkl')
+
+    results_dir = os.path.join('results', 'pcnn')
+    os.makedirs(results_dir, exist_ok=True)  # Create the directory if it doesn't exist
+    results_file = os.path.join(results_dir, 'validation_results.txt')
 
     # Evaluate on validation set
     val_pred = clf.predict(val_embeddings)
     accuracy = accuracy_score(val_labels, val_pred)
+    classification_report_str = classification_report(val_labels, val_pred)
+
+    # Print results to console
     print("Validation Accuracy:", accuracy)
-    print("Classification Report:\n", classification_report(val_labels, val_pred))
+    print("Classification Report:\n", classification_report_str)
+
+    # Save the results to a text file
+    with open(results_file, 'w') as f:
+        f.write(f"Validation Accuracy: {accuracy}\n")
+        f.write("Classification Report:\n")
+        f.write(classification_report_str)
 
     if args.generate_tsne:
-        generate_tsne(train_embeddings, train_labels)
+        tsne_output_file = os.path.join(results_dir, 'tsne_plot.png')
+        generate_tsne(train_embeddings, train_labels, output_file=tsne_output_file)
+        # Log the t-SNE output file path in the results file
+        with open(results_file, 'a') as f:  # Append to the file
+            f.write(f"\nt-SNE plot saved to: {tsne_output_file}\n")
 
 
 
@@ -517,14 +538,24 @@ def validate(val_loader, model, criterion):
 
     return top1.avg
 
-def save_checkpoint(state, is_best, foldername='experiment_1', filename='checkpoint.pth.tar'):
-    torch.save(state, os.path.join(foldername, filename))
+def save_checkpoint(state, is_best, foldername='./results/pcnn', filename='checkpoint.pth.tar'):
+    # Ensure the folder exists
+    if not os.path.exists(foldername):
+        os.makedirs(foldername)
+    
+    # Save the checkpoint
+    checkpoint_path = os.path.join(foldername, filename)
+    torch.save(state, checkpoint_path)
+    
+    # If this is the best model, save a copy as 'model_best.pth.tar'
     if is_best:
-        shutil.copyfile(os.path.join(foldername, filename), os.path.join(foldername, 'model_best.pth.tar'))
+        shutil.copyfile(checkpoint_path, os.path.join(foldername, 'model_best.pth.tar'))
+    
+    # If saving the model's state_dict separately
     if args.save_model:
-        model_path = os.path.join(foldername, args.save_model)
-        torch.save(state['state_dict'], model_path)
-        print(f"Model saved to {model_path}")
+        state_dict_filename = os.path.join(foldername, 'model_state_dict.pth')
+        torch.save(state['state_dict'], state_dict_filename)
+        print(f"Model state_dict saved to {state_dict_filename}")
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
