@@ -28,20 +28,23 @@ class PatchedDatasetAugmented(Dataset):
         self.labels = []
         self.patients = []
         self.coordinates = []
-        self.eval = eval
+        self.eval = eval 
 
         # Process not_roi_patches (label 0)
         not_roi_dir = os.path.join(root_dir, self.not_roi_path)
 
         for patient_id in range(1, self.num_images + 1):
-            patient_dir = str(patient_id) + ".svs"
-            patient_dir = os.path.join(not_roi_dir, str(patient_dir))
+            if patient_id != 21:
 
-            for img_name in [f for f in os.listdir(patient_dir) if f.endswith(".png")]:
-                self.image_paths.append(os.path.join(patient_dir, img_name))
-                self.labels.append(0)
-                self.patients.append(patient_id)
-                self.coordinates.append(self._extract_coordinates(img_name))
+
+                patient_dir = str(patient_id) + ".svs"
+                patient_dir = os.path.join(not_roi_dir, str(patient_dir))
+
+                for img_name in [f for f in os.listdir(patient_dir) if f.endswith(".png")]:
+                    self.image_paths.append(os.path.join(patient_dir, img_name))
+                    self.labels.append(0)
+                    self.patients.append(patient_id)
+                    self.coordinates.append(self._extract_coordinates(img_name))
 
         # Process in_roi_patches (label 1)
         in_roi_dir = os.path.join(root_dir, self.in_roi_path)
@@ -94,6 +97,7 @@ class PatchedDatasetAugmented(Dataset):
         coordinates = self.coordinates[idx]
         image = self.transform(image)
         if self.eval:
+
             return image, label
         return image  
 
