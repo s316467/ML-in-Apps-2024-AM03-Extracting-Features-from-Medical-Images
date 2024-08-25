@@ -27,11 +27,14 @@ def main(args):
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
     )
 
+    print(f"{args.model_name} loaded")
     extractor = load_extractor(args.model_name, args.latent_dim)
 
+    print("Extracting features...")
     features, labels = extractor.extract_features(dataloader)
 
-    svm.classify(features, labels, args.results_path)
+    print("Fitting svm...")
+    svm.classify(features, labels, args.results_path, with_pca=True)
 
 
 if __name__ == "__main__":
