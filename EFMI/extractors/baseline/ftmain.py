@@ -1,5 +1,6 @@
 import argparse
 import torch
+import numpy as np
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from finetune import fine_tune
@@ -16,11 +17,14 @@ def main(args):
 
     train_dataset, test_dataset = train_test_split(dataset, 0.8)
 
+    np.save(f'finetune_resnet_{args.ft_epochs}_train_dataset.npy', train_array)
+    np.save(f'finetune_resnet_{args.ft_epochs}_test_dataset.npy', test_array)
+
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
+        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8
     )
 
     print(f"Finetuning {args.model_name}..")
