@@ -1,12 +1,11 @@
 import argparse
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from finetune import fine_tune
 from models.resnet import get_adapted_resnet50, Resnet50Extractor
 from dataset.PatchedDataset import PatchedDataset, train_test_split
 import classifier.svm as svm
-import torchvision.models as models
 
 
 def main(args):
@@ -26,9 +25,8 @@ def main(args):
     print(f"Finetuning {args.model_name}..")
     resnet50 = fine_tune(resnet50, train_loader, args.ft_epochs, args.model_name)
 
-    extractor = Resnet50Extractor(model=resnet50, verbose=True)
+    extractor = Resnet50Extractor(model=resnet50)
 
-    print(f"Extracting feature from finetuned {args.model_name}..")
     train_features, train_labels = extractor.extract_features(train_loader)
     test_features, test_labels = extractor.extract_features(test_loader)
 
