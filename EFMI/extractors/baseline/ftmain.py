@@ -2,39 +2,19 @@ import argparse
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
-from train import fine_tune
-from models.densenet import DensenetExtractor
-from models.resnet import Resnet50Extractor
-from dataset.PatchedDataset import PatchedDataset
+from finetune import fine_tune
+from models.resnet import get_adapted_resnet50, Resnet50Extractor
+from dataset.PatchedDataset import PatchedDataset, train_test_split
 import classifier.svm as svm
 import torchvision.models as models
-from torchvision.models import ResNet50_Weights
-
-def create_binary_classifier():
-    # Load a pretrained ResNet50 model
-    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-    
-    # Freeze all the parameters in the network
-    for param in model.parameters():
-        param.requires_grad = False
-    
-    # Replace the last fully connected layer
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Sequential(
-        nn.Linear(num_ftrs, 256),
-        nn.ReLU(),
-        nn.Dropout(0.2),
-        nn.Linear(256, 2)  # 2 output classes for binary classification
-    )
-    
-    return model
 
 
-def train_test_split_loaders(full_dataset, train_ratio):
-    
-    train_size = int(train_ratio * len(full_dataset))
-    test_size = len(full_dataset) - train_size
-    train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
+def main(args):
+    dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
+
+    resnet50 = get_adapted_resnet50().cuda()
+
+    train_dataset, test_dataset = train_test_split(dataset, 0.8)
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
@@ -43,29 +23,15 @@ def train_test_split_loaders(full_dataset, train_ratio):
         test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2
     )
 
-    return train_loader, test_loader
-
-
-def main(args):
-    dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
-    
-    # Create the model
-    extractor = create_binary_classifier()
-    
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    extractor = extractor.to(device)
-
-    print(f"Loaded {args.model_name}")
-
-    train_loader, test_loader = train_test_split_loaders(dataset, 0.8)
-
     print(f"Finetuning {args.model_name}..")
-    extractor = fine_tune(extractor, train_loader, args.ft_epochs, args.model_name)
+    resnet50 = fine_tune(resnet50, train_loader, args.ft_epochs, args.model_name)
+
+    extractor = Resnet50Extractor(model=resnet50, verbose=True)
 
     print(f"Extracting feature from finetuned {args.model_name}..")
     train_features, train_labels = extractor.extract_features(train_loader)
     test_features, test_labels = extractor.extract_features(test_loader)
-    
+
     svm.classify_with_provided_splits(
         train_features,
         train_labels,
@@ -96,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=16,
+        default=32,
     )
     parser.add_argument(
         "--model_name",

@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
 
-# Function to plot loss during training
 def plot_training_loss(losses, output_dir, file_name):
     plt.figure()
     plt.plot(losses, label="Training Loss")
