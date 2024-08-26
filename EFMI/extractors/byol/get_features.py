@@ -166,10 +166,9 @@ if __name__ == "__main__":
         print("### Loading features from file ###")
         train_X, train_y, test_X, test_y = load_features(feature_file)
     
-
     print("Shape of train_X: ", train_X.shape)
     print("Shape of test_X: ", test_X.shape)
     print("Shape of test_y: ", test_y.shape)
     print("Shape of train_y: ", train_y.shape)
-
+    
     
