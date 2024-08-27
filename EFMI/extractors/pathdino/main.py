@@ -18,10 +18,10 @@ def train_test_split_loaders(full_dataset, train_ratio):
     # np.save("path_dino_10_test_set.npy", test_dataset)
 
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
+        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8
     )
 
     return train_loader, test_loader
