@@ -23,3 +23,4 @@ PNGs
 temp_images
 checkpoint*.pth
 *.pt
+*.pth
