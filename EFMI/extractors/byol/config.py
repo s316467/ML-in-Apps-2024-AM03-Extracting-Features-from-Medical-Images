@@ -1,7 +1,7 @@
 # config.py
 
 BATCH_SIZE = 32
-EPOCHS     = 30
+EPOCHS     = 10
 LR         = 3e-5
 NUM_GPUS   = 2
 IMAGE_SIZE = 256
