@@ -11,24 +11,26 @@ import classifier.svm as svm
 
 
 def main(args):
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
 
     resnet50 = get_adapted_resnet50().cuda()
 
     train_dataset, test_dataset = train_test_split(dataset, 0.8)
 
-    # np.save(f'finetune_resnet_{args.ft_epochs}_train_dataset.npy', train_dataset)
-    # np.save(f'finetune_resnet_{args.ft_epochs}_test_dataset.npy', test_dataset)
-
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
+        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8
     )
 
     print(f"Finetuning {args.model_name}..")
-    resnet50 = fine_tune(resnet50, train_loader, args.ft_epochs, args.model_name)
+    resnet50 = fine_tune(
+        resnet50, train_loader, args.ft_epochs, args.model_name, device
+    )
 
     extractor = AdaptedResnet50Extractor(model=resnet50, latent_dim=128)
 
