@@ -12,7 +12,6 @@ def fine_tune(model, train_loader, num_epochs, model_name):
 
     model.train()
     for epoch in range(num_epochs):
-        print("Computing loss for epoch: ", epoch + 1)
         running_loss = 0.0
         for inputs, labels, _, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{num_epochs}"):
             inputs = inputs.cuda()

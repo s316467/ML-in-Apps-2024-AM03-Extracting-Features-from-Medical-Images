@@ -4,7 +4,8 @@ import numpy as np
 from torch import nn
 from torch.utils.data import DataLoader
 from finetune import fine_tune
-from models.resnet import get_adapted_resnet50, Resnet50Extractor
+from models.resnet import get_adapted_resnet50
+from ftextractor import AdaptedResnet50Extractor
 from dataset.PatchedDataset import PatchedDataset, train_test_split
 import classifier.svm as svm
 
@@ -16,8 +17,8 @@ def main(args):
 
     train_dataset, test_dataset = train_test_split(dataset, 0.8)
 
-    np.save(f'finetune_resnet_{args.ft_epochs}_train_dataset.npy', train_array)
-    np.save(f'finetune_resnet_{args.ft_epochs}_test_dataset.npy', test_array)
+    # np.save(f'finetune_resnet_{args.ft_epochs}_train_dataset.npy', train_dataset)
+    # np.save(f'finetune_resnet_{args.ft_epochs}_test_dataset.npy', test_dataset)
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
@@ -29,7 +30,7 @@ def main(args):
     print(f"Finetuning {args.model_name}..")
     resnet50 = fine_tune(resnet50, train_loader, args.ft_epochs, args.model_name)
 
-    extractor = Resnet50Extractor(model=resnet50)
+    extractor = AdaptedResnet50Extractor(model=resnet50, latent_dim=128)
 
     train_features, train_labels = extractor.extract_features(train_loader)
     test_features, test_labels = extractor.extract_features(test_loader)
