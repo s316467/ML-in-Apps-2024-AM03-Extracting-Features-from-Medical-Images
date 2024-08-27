@@ -65,7 +65,11 @@ class BYOLTrainer(Module):
         ngpus_per_node = torch.cuda.device_count()
 
         self.rank = self.rank * ngpus_per_node
+<<<<<<< HEAD
         # dist.init_process_group(backend='nccl', init_method='tcp://localhost:10001', world_size=self.world_size, rank=self.rank)
+=======
+        dist.init_process_group(backend='nccl', init_method='tcp://localhost:10001', world_size=self.world_size, rank=self.rank)
+>>>>>>> origin/main
 
         # Set the device for the current process
         self.device = torch.device(f'cuda:{self.accelerator.local_process_index}')

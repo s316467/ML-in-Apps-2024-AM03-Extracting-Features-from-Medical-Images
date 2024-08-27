@@ -1,4 +1,5 @@
 import argparse
+import numpy as np
 from train import fine_tune
 from torch.utils.data import DataLoader, random_split
 from extractor import extract_features
@@ -12,6 +13,9 @@ def train_test_split_loaders(full_dataset, train_ratio):
     train_size = int(train_ratio * len(full_dataset))
     test_size = len(full_dataset) - train_size
     train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
+
+    # np.save("path_dino_10_train_set.npy", train_dataset)
+    # np.save("path_dino_10_test_set.npy", test_dataset)
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8

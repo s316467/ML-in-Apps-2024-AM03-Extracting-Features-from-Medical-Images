@@ -9,15 +9,21 @@ from dataset.patches_dataset import PatchedDatasetAugmented, train_test_split_da
 from byol_pytorch.trainer import BYOLTrainer
 from augmentations import get_train_augmentations
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
 def main(args):
     # Carica il modello
     resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
 
     # Carica il dataset
     ds = PatchedDatasetAugmented(args.image_folder, size=config.IMAGE_SIZE)
+<<<<<<< HEAD
     train_ds, test_ds = train_test_split_dataset(ds, test_size=0.2)
     
+=======
+>>>>>>> origin/main
     data_loader = DataLoader(ds, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True)
 
     # Ottenere le trasformazioni basate sulla configurazione e l'indice specificato
@@ -35,7 +41,11 @@ def main(args):
     # Configura e avvia il trainer
     trainer = BYOLTrainer(
         net=resnet,
+<<<<<<< HEAD
         dataset=train_ds,
+=======
+        dataset=ds,
+>>>>>>> origin/main
         image_size=config.IMAGE_SIZE,
         hidden_layer='avgpool',
         learning_rate=config.LR,
@@ -56,4 +66,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     main(args)
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
