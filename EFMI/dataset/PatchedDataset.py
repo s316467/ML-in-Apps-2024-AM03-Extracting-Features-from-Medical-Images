@@ -4,6 +4,7 @@ import os
 import numpy as np
 from PIL import Image
 import re
+import torch
 
 
 def get_mean_std(dataloader):
@@ -28,9 +29,11 @@ def get_mean_std(dataloader):
 
 def train_test_split(full_dataset, train_ratio):
 
+    generator = torch.Generator()
+    generator.manual_seed(42)
     train_size = int(train_ratio * len(full_dataset))
     test_size = len(full_dataset) - train_size
-    train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
+    train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size], generator=generator)
 
     return train_dataset, test_dataset
 
