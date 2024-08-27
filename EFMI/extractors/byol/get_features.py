@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
     # fine-tune model
 
-    feature_file = "embeddings/features.pt" 
+    feature_file = "extractors/byol/embeddings/eval_embeddings.pt" 
     # compute features (only needs to be done once, since it does not backprop during fine-tuning)
     if not os.path.exists(feature_file):
         print("### Creating features from pre-trained model ###")

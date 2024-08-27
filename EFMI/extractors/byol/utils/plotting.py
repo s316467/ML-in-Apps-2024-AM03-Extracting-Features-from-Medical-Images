@@ -39,7 +39,7 @@ def plot_tsne(features, labels, title, filename):
     plt.title(title)
     plt.xlabel("t-SNE feature 1")
     plt.ylabel("t-SNE feature 2")
-    plt.savefig(filename)
+    plt.savefig(filename, dpi=500)
     plt.close()
 
 
