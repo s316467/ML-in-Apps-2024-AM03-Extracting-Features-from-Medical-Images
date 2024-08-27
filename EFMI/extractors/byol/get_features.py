@@ -128,8 +128,6 @@ if __name__ == "__main__":
         raise FileNotFoundError("No checkpoints found")
     
     
-         
-
     resnet.load_state_dict(torch.load(latest_checkpoint, map_location=device))
     resnet = resnet.to(device)
 
@@ -140,13 +138,11 @@ if __name__ == "__main__":
     resnet = nn.Sequential(*list(resnet.children())[:-1])
         # Add a new linear layer to reduce the feature dimension to 128
     
-
     n_classes = 2
-
 
     # fine-tune model
 
-    feature_file = "embeddings/features.pt" 
+    feature_file = "extractors/byol/embeddings/eval_embeddings.pt" 
     # compute features (only needs to be done once, since it does not backprop during fine-tuning)
     if not os.path.exists(feature_file):
         print("### Creating features from pre-trained model ###")
@@ -166,10 +162,9 @@ if __name__ == "__main__":
         print("### Loading features from file ###")
         train_X, train_y, test_X, test_y = load_features(feature_file)
     
-
     print("Shape of train_X: ", train_X.shape)
     print("Shape of test_X: ", test_X.shape)
     print("Shape of test_y: ", test_y.shape)
     print("Shape of train_y: ", train_y.shape)
-
+    
     

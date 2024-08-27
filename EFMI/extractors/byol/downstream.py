@@ -8,25 +8,27 @@ import pickle
 
 
 def load_features(file_path):
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         train_X, train_y, test_X, test_y = pickle.load(f)
     print(f"Features loaded from {file_path}")
     return train_X, train_y, test_X, test_y
 
 
 # Dividi i dati in set di addestramento e set di test
-X_train, y_train, X_test, y_test= load_features("embeddings/features.pt")
+X_train, y_train, X_test, y_test = load_features(
+    "./extractors/byol/embeddings/eval_embeddings.pt"
+)
 print(X_train.shape)
 print(y_train.shape)
 print(X_test.shape)
 print(y_test.shape)
 
-plot_tsne(X_train, y_train, "tsne_train_128_latent", "tsne_train_128.png")
-plot_tsne(X_test, y_test, "tsne_test.png", "tsne_test_128.png")
+plot_tsne(X_train, y_train, "BYOL", "BYOL_train_tsne.png")
+plot_tsne(X_test, y_test, "BYOL", "BYOL_test_tsne.png")
 
 
 # Addestra un classificatore SVM utilizzando le features estratte
-svm_classifier = SVC(kernel='linear')
+svm_classifier = SVC(kernel="linear")
 svm_classifier.fit(X_train, y_train)
 
 # Valuta le prestazioni del modello sul set di addestramento
@@ -48,6 +50,4 @@ print("Confusion Matrix on test set:")
 print(confusion_matrix(y_test, y_pred_test))
 
 
-#create tsne
-
-
+# create tsne
