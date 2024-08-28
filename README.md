@@ -64,8 +64,16 @@ To test one of the baseline latents with an svm classifier. Run ```EFMI/launch_s
 
 
 ## Run the resnet50 baseline finetuning
-...
+To finetune the last fc of the pretrained resnet50 baseline, run the following inside EFMI
+```
+# Set Permissions
+!chmod +x ./launch_scripts/test-ftbaseline.sh
+!sed -i 's/\r$//' ./launch_scripts/test-ftbaseline.sh
 
+# RUN
+# root_dir num images batch_size model_name num_epochs latent dim
+! ./launch_scripts/test-ftbaseline.sh /content/drive/MyDrive/mla/DATA/ 24 32 resnet50 10 128
+```
 
 # Feature extractors
 ## VAE
@@ -74,6 +82,18 @@ To test the custom VAE latents with the svm classifier, simply run ```EFMI/launc
 
 ## PathDINO
 To test PathDino latents with the svm classifier, move in ```EFMI``` and run ```/launch_scripts/test-pathdino.sh root_dir num_images batch_size latent_dim fine_tune_epochs results_path pretrained_dino_path```. ```root_dir``` is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24, i.e: full dataset) specifies on how many images-patches to train the model, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size (defaults to 16), ```latent_dim``` specifies the extracted latents dimension (defaults to 128). If you want to finetune the model, specify a number for ```fine_tune_epochs``` running the script, otherwise it will default to ```0, i.e: without finetuning```. Specify where do you want to save the report with ```results_path``` (defaults to "./results/pathdino" and "./results/pathdino/finetune) and load pretrained weights from ```pretrained_dino_path``` (defaults to "./extractors/pathdino/model/PathDino512.pth)
+
+To run the last ViT block finetuning run:
+```
+# Set Permissions
+!chmod +x ./launch_scripts/test-pathdino.sh
+!sed -i 's/\r$//' ./launch_scripts/test-pathdino.sh
+
+# RUN
+# root_dir num images batch_size latent_dim fine_tune_epochs results_path pretrained_weights_path
+! ./launch_scripts/test-pathdino.sh /content/drive/MyDrive/mla/DATA/ 24 32 128 10 
+```
+
 
 
 ## BYOL Feature Extractor for Medical Images
