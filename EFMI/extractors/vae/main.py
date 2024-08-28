@@ -18,7 +18,7 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
-    train_loader, test_loader = train_test_split_loaders(dataset, 0.8)
+    train_loader, test_loader = train_test_split_loaders(dataset, args.batch_size, 0.8)
 
     if args.no_train:
         print("Loading trained VAE...")
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,
+        default=8,
     )
     parser.add_argument(
         "--latent_dim",
