@@ -11,9 +11,10 @@ In the following, you can find a brief description of the project files.
 | `results/.*` | contains experiments classification reports and plots |
 | `dataset/PatchedDataset.py` | contains the custom Dataset class |
 | `dataset/patches.py` | contains the code to extract patches from WSIs |
+| `dataset/stats.py` | contains a script to print ds stats |
 | `classifier/svm.py` | contains the svm classifier with which to test the extracted features on the main classification task (cancer presence) |
 | `extractors/.*` | each subfolder contains the code to extract feature using a particular method |
-| `extractors/baseline/.*` | contains the code to extract features from patches using imagenet pretrained baselines (resnet50, densenet121) |
+| `extractors/baseline/.*` | contains the code to extract features from patches using imagenet pretrained baselines (resnet50, densenet121) and finetuned resnet50|
 | `extractors/pathdino/.*` |  contains the code to extract features from patches using pathdino (pretrained or finetuned) |
 | `extractors/vae/.*` |  contains the code to extract features from patches using a custom VAE |
 
