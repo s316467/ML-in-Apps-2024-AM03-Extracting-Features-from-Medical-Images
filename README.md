@@ -14,7 +14,6 @@ In the following, you can find a brief description of the project files.
 | `classifier/svm.py` | contains the svm classifier with which to test the extracted features on the main classification task (cancer presence) |
 | `extractors/.*` | each subfolder contains the code to extract feature using a particular method |
 | `extractors/baseline/.*` | contains the code to extract features from patches using imagenet pretrained baselines (resnet50, densenet121) |
-| `extractors/baseline/features` | contains np arrays of baseline extracted features and labels |
 | `extractors/pathdino/.*` |  contains the code to extract features from patches using pathdino (pretrained or finetuned) |
 | `extractors/vae/.*` |  contains the code to extract features from patches using a custom VAE |
 
@@ -63,6 +62,9 @@ dataloader = DataLoader(ds, batch_size=8, shuffle=True)
 ## Run the baseline
 To test one of the baseline latents with an svm classifier. Run ```EFMI/launch_scripts/test-baseline.sh root_dir num_images batch_size model_name latent_dim experiment_name```. The ```root_dir``` param is the dataset root directory containing the patches inside two distinct folders, in ROI and not in ROI. ```num_images``` (defaults to 24) specifies on how many images-patches to train the baseline, use this for test purposes (note that patches dirs contains image_name.svs/patch.png list). ```batch_size``` is the batch_size (defaults to 16). ```model_name``` specifies which pretrained baseline model to use as baseline feature extractor, defaults to resnet50. Availables: resnet50, densenet121. ```latent_dim``` specifies the extracted feature dimensionality (latent dimensions, defaults to 128). ```results_path``` specifies the file path in which to save experiment results.
 
+
+## Run the resnet50 baseline finetuning
+...
 
 
 # Feature extractors
