@@ -13,3 +13,21 @@ class Resnet50Extractor(BaselineExtractor):
             latent_dim=latent_dim,
             verbose=verbose,
         )
+
+
+def get_adapted_resnet50(latent_dim=128):
+    model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+
+    model = nn.Sequential(*list(model.children())[:-1])
+
+    model = nn.Sequential(
+        *list(model.children()), nn.Flatten(), nn.Linear(2048, latent_dim)
+    )
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    for param in model[-1].parameters():
+        param.requires_grad = True
+
+    return model
