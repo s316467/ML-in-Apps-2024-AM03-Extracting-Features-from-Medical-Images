@@ -4,6 +4,8 @@ batch_size=${3:-8}
 latent_dim=${4:-100}
 num_epochs=${5:-35}
 vae_type=${6:-vae}
+no_train=${7:-0}
+model_path=${8}
 
 # Set PYTHONPATH to include the project root
 export PYTHONPATH=$(pwd)
@@ -18,4 +20,7 @@ python ./extractors/vae/main.py \
 --latent_dim=${latent_dim} \
 --num_epochs=${num_epochs} \
 --vae_type=${vae_type} \
+--no_train=${no_train} \
+--model_path=${model_path} \
 --results_path=${results_path} \
+

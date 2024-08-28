@@ -1,26 +1,10 @@
 import argparse
 import torch
 from extractor import extract_latents
-from dataset.PatchedDataset import PatchedDataset
-from torch.utils.data import DataLoader, random_split
+from dataset.PatchedDataset import PatchedDataset, train_test_split_loaders
 from train import train
 import classifier.svm as svm
 from models import res_vae
-import numpy as np
-
-def train_test_split_loaders(full_dataset, train_ratio):
-    train_size = int(train_ratio * len(full_dataset))
-    test_size = len(full_dataset) - train_size
-    train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
-
-    train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8
-    )
-
-    return train_loader, test_loader
 
 
 def main(args):
@@ -38,9 +22,8 @@ def main(args):
 
     if args.no_train:
         print("Loading trained VAE...")
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         VAE_trained = res_vae.ResVAE(args.latent_dim).to(device)
-        VAE_trained.load_state_dict(torch.load(args.model_path)['model_state_dict']) 
+        VAE_trained.load_state_dict(torch.load(args.model_path)["model_state_dict"])
     else:
         print("Starting VAE training...")
         VAE_trained = train(
@@ -52,11 +35,23 @@ def main(args):
         )
 
     print("Extracting latents...")
-    train_features, train_labels = extract_latents(VAE_trained, train_loader, device, args.results_path)
-    test_features, test_labels = extract_latents(VAE_trained, test_loader, device, args.results_path)
+    train_features, train_labels = extract_latents(
+        VAE_trained, train_loader, device, args.results_path
+    )
+    test_features, test_labels = extract_latents(
+        VAE_trained, test_loader, device, args.results_path
+    )
 
     print("Classifying latents with SVMs...")
-    svm.classify_with_provided_splits(train_features, train_labels, test_features, test_labels, args.results_path, with_pca=False)
+    svm.classify_with_provided_splits(
+        train_features,
+        train_labels,
+        test_features,
+        test_labels,
+        args.results_path,
+        with_pca=False,
+    )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -95,23 +90,18 @@ if __name__ == "__main__":
         help="Choose which VAE to train, supported: [vae, resvae]",
     )
     parser.add_argument(
+        "--no_train",
+        action="store_false",
+        help="If specified vae is not trained, load the model from the specified path",
+    )
+    parser.add_argument("--model_path", type=str, help="path to trained model folder")
+    parser.add_argument(
         "--results_path",
         type=str,
         help="Name of the experiment, save results in this path.",
     )
 
-    parser.add_argument(
-        "--no_train",
-        action='store_false',
-        help="If specified vae is not trained, load the model from the specified path"
-    )
-
-    parser.add_argument(
-        "--model_path",
-        type=str,
-        help="path to trained model folder"
-    )
-
     args = parser.parse_args()
+    args.no_train = True if args.no_train == 1 else False
 
     main(args)

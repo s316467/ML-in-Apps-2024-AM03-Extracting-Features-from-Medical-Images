@@ -7,7 +7,7 @@ import re
 import torch
 
 
-def train_test_split_loaders(full_dataset, bs=32, train_ratio=0.2):
+def train_test_split_loaders(full_dataset, bs=32, train_ratio=0.8):
     train_dataset, test_dataset = train_test_split(full_dataset, train_ratio)
 
     train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=True, num_workers=8)

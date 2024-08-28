@@ -14,10 +14,11 @@ def fine_tune(model, dataloader, num_epochs):
 
     criterion = nn.CrossEntropyLoss()
     model = model.cuda()
-   
+
     for param in model.parameters():
         param.requires_grad = False
 
+    # Last ViT block only
     for param in model.blocks[-1].parameters():
         param.requires_grad = True
 

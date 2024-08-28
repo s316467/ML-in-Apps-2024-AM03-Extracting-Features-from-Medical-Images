@@ -14,7 +14,7 @@ def main(args):
 
     dataset = PatchedDataset(root_dir=args.root_dir, num_images=args.num_images)
 
-    resnet50 = get_adapted_resnet50().cuda()
+    resnet50 = get_adapted_resnet50(latent_dim=args.latent_dim).cuda()
 
     train_loader, test_loader = train_test_split_loaders(
         dataset, args.batch_size, train_ratio=0.8
