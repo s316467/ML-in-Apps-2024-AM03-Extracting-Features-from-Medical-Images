@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from finetune import fine_tune
 from models.resnet import get_adapted_resnet50
 from ftextractor import AdaptedResnet50Extractor
-from dataset.PatchedDataset import PatchedDataset, train_test_split
+from dataset.PatchedDataset import PatchedDataset, train_test_split_loaders
 import classifier.svm as svm
 
 
@@ -16,13 +16,8 @@ def main(args):
 
     resnet50 = get_adapted_resnet50().cuda()
 
-    train_dataset, test_dataset = train_test_split(dataset, 0.8)
-
-    train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8
+    train_loader, test_loader = train_test_split_loaders(
+        dataset, args.batch_size, train_ratio=0.8
     )
 
     print(f"Finetuning {args.model_name}..")
@@ -30,7 +25,7 @@ def main(args):
         resnet50, train_loader, args.ft_epochs, args.model_name, device
     )
 
-    extractor = AdaptedResnet50Extractor(model=resnet50, latent_dim=128)
+    extractor = AdaptedResnet50Extractor(model=resnet50, device=device)
 
     train_features, train_labels = extractor.extract_features(train_loader)
     test_features, test_labels = extractor.extract_features(test_loader)

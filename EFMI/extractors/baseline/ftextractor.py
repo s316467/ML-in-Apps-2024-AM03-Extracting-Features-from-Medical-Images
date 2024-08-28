@@ -1,15 +1,12 @@
 import torch
-import torch.nn as nn
 import numpy as np
 from tqdm import tqdm
 
 
 class AdaptedResnet50Extractor:
-    def __init__(self, model, latent_dim, verbose=False):
-        self.model = model
-        self.latent_dim = latent_dim
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self.model.to(self.device)
+    def __init__(self, model, device, verbose=False):
+        self.device = device
+        self.model = model.to(self.device)
         self.verbose = verbose
 
     def extract_features(self, data_loader):

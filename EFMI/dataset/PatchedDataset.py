@@ -1,10 +1,19 @@
-from torch.utils.data import Dataset, random_split
+from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 import os
 import numpy as np
 from PIL import Image
 import re
 import torch
+
+
+def train_test_split_loaders(full_dataset, bs=32, train_ratio=0.2):
+    train_dataset, test_dataset = train_test_split(full_dataset, train_ratio)
+
+    train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=True, num_workers=8)
+    test_loader = DataLoader(test_dataset, batch_size=bs, shuffle=False, num_workers=8)
+
+    return train_loader, test_loader
 
 
 def train_test_split(full_dataset, train_ratio):

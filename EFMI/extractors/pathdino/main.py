@@ -1,25 +1,11 @@
 import argparse
 import numpy as np
 from train import fine_tune
-from torch.utils.data import DataLoader
 from extractor import extract_features
 import classifier.svm as svm
 from utils.plotting import *
-from dataset.PatchedDataset import PatchedDataset, train_test_split
+from dataset.PatchedDataset import PatchedDataset, train_test_split_loaders
 from model.PathDino import get_pathDino_model
-
-
-def train_test_split_loaders(full_dataset, train_ratio):
-    train_dataset, test_dataset = train_test_split(full_dataset, train_ratio)
-
-    train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8
-    )
-
-    return train_loader, test_loader
 
 
 def main(args):
@@ -34,7 +20,9 @@ def main(args):
         root_dir=args.root_dir, num_images=args.num_images, transform=dino_transform
     )
 
-    train_loader, test_loader = train_test_split_loaders(dataset, 0.8)
+    train_loader, test_loader = train_test_split_loaders(
+        dataset, args.batch_size, train_ratio=0.8
+    )
 
     if args.fine_tune:
         print(f"Finetuning pathdino512 from {args.pretrained_dino_path}")
