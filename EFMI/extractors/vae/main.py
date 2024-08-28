@@ -91,7 +91,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--no_train",
-        action="store_false",
+        type=int,
+        default=1,
         help="If specified vae is not trained, load the model from the specified path",
     )
     parser.add_argument("--model_path", type=str, help="path to trained model folder")

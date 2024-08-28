@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from train import fine_tune
+from finetune import fine_tune
 from extractor import extract_features
 import classifier.svm as svm
 from utils.plotting import *
