@@ -1,7 +1,5 @@
 import argparse
 import torch
-import numpy as np
-from torch import nn
 from torch.utils.data import DataLoader
 from finetune import fine_tune
 from models.resnet import get_adapted_resnet50
